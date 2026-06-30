@@ -30,7 +30,7 @@ export function App() {
   return (
     <div className="app">
       <nav className="sidebar">
-        <div className="brand">💰 Budget</div>
+        <div className="brand">💰 Forbord Financials</div>
         {NAV.map((n) => (
           <button
             key={n.id}
