@@ -15,6 +15,13 @@ const TYPES: { value: BucketType; label: string }[] = [
   { value: "savings", label: "Savings" },
 ];
 
+// Each type has one consistent badge color, regardless of the bucket's own dot color.
+const TYPE_COLORS: Record<BucketType, string> = {
+  expense: "#6366f1", // indigo
+  tax: "#f59e0b", // amber
+  savings: "#10b981", // green
+};
+
 export function Buckets() {
   const { state, dispatch } = useStore();
 
@@ -134,7 +141,13 @@ export function Buckets() {
                         {b.name}
                       </td>
                       <td>
-                        <span className="tag" style={{ background: b.color + "22", color: b.color }}>
+                        <span
+                          className="tag"
+                          style={{
+                            background: TYPE_COLORS[b.type] + "22",
+                            color: TYPE_COLORS[b.type],
+                          }}
+                        >
                           {b.type}
                         </span>
                       </td>
