@@ -9,7 +9,7 @@ import {
   useState,
   ReactNode,
 } from "react";
-import { Account, AppState, Bucket, IncomeEntry, Txn } from "./types";
+import { Account, AppState, Bucket, Goal, IncomeEntry, PlannedExpense, Txn } from "./types";
 import { loadState, saveState, uid } from "./storage";
 import {
   forgetHandle,
@@ -35,7 +35,13 @@ type Action =
   | { type: "DELETE_INCOME"; month: string; id: string }
   | { type: "ADD_TXN"; month: string; txn: Txn }
   | { type: "UPDATE_TXN"; month: string; txn: Txn }
-  | { type: "DELETE_TXN"; month: string; id: string };
+  | { type: "DELETE_TXN"; month: string; id: string }
+  | { type: "ADD_GOAL"; goal: Goal }
+  | { type: "UPDATE_GOAL"; goal: Goal }
+  | { type: "DELETE_GOAL"; id: string }
+  | { type: "ADD_PLANNED"; planned: PlannedExpense }
+  | { type: "UPDATE_PLANNED"; planned: PlannedExpense }
+  | { type: "DELETE_PLANNED"; id: string };
 
 function ensureMonth(state: AppState, month: string): AppState {
   if (state.months[month]) return state;
@@ -139,6 +145,31 @@ function baseReducer(state: AppState, action: Action): AppState {
         },
       };
     }
+
+    case "ADD_GOAL":
+      return { ...state, goals: [...state.goals, action.goal] };
+    case "UPDATE_GOAL":
+      return {
+        ...state,
+        goals: state.goals.map((g) => (g.id === action.goal.id ? action.goal : g)),
+      };
+    case "DELETE_GOAL":
+      return { ...state, goals: state.goals.filter((g) => g.id !== action.id) };
+
+    case "ADD_PLANNED":
+      return { ...state, plannedExpenses: [...state.plannedExpenses, action.planned] };
+    case "UPDATE_PLANNED":
+      return {
+        ...state,
+        plannedExpenses: state.plannedExpenses.map((p) =>
+          p.id === action.planned.id ? action.planned : p,
+        ),
+      };
+    case "DELETE_PLANNED":
+      return {
+        ...state,
+        plannedExpenses: state.plannedExpenses.filter((p) => p.id !== action.id),
+      };
 
     default:
       return state;

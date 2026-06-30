@@ -32,6 +32,8 @@ export function defaultState(): AppState {
       { id: uid(), name: "Brokerage / Retirement", startingBalance: 0 },
     ],
     months: {},
+    goals: [],
+    plannedExpenses: [],
     lastModified: Date.now(),
   };
 }
@@ -49,6 +51,8 @@ export function loadState(): AppState {
       buckets: parsed.buckets ?? [],
       accounts: parsed.accounts ?? [],
       months: parsed.months ?? {},
+      goals: parsed.goals ?? [],
+      plannedExpenses: parsed.plannedExpenses ?? [],
       lastModified: parsed.lastModified ?? 0,
     };
   } catch {
@@ -84,6 +88,8 @@ export function parseImported(text: string): AppState {
     buckets: parsed.buckets,
     accounts: parsed.accounts ?? [],
     months: parsed.months ?? {},
+    goals: parsed.goals ?? [],
+    plannedExpenses: parsed.plannedExpenses ?? [],
     lastModified: parsed.lastModified ?? 0,
   };
 }
