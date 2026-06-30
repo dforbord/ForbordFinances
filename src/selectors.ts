@@ -1,5 +1,5 @@
 import { AppState, Goal } from "./types";
-import { clamp, parseDate } from "./format";
+import { clamp, dateKey, parseDate, weekStartKey } from "./format";
 
 export type GoalStatus = "reached" | "ahead" | "on-track" | "behind" | "overdue";
 
@@ -24,6 +24,54 @@ export interface GoalStats {
   status: GoalStatus;
   /** Whole months remaining (including the current one). */
   monthsLeft: number;
+}
+
+export interface WeekPoint {
+  weekStart: string;
+  label: string;
+  income: number;
+  expenses: number;
+  taxes: number;
+  net: number;
+}
+
+/** Weekly buckets for the last `weeks` weeks (oldest → newest, current last). */
+export function weeklySeries(state: AppState, weeks = 8, now: Date = new Date()): WeekPoint[] {
+  const expenseIds = new Set(state.buckets.filter((b) => b.type === "expense").map((b) => b.id));
+  const taxIds = new Set(state.buckets.filter((b) => b.type === "tax").map((b) => b.id));
+
+  const thisWeek = parseDate(weekStartKey(now));
+  const index = new Map<string, WeekPoint>();
+  const points: WeekPoint[] = [];
+  for (let i = weeks - 1; i >= 0; i--) {
+    const ws = new Date(thisWeek.getFullYear(), thisWeek.getMonth(), thisWeek.getDate() - i * 7);
+    const key = dateKey(ws);
+    const p: WeekPoint = {
+      weekStart: key,
+      label: `${ws.getMonth() + 1}/${ws.getDate()}`,
+      income: 0,
+      expenses: 0,
+      taxes: 0,
+      net: 0,
+    };
+    index.set(key, p);
+    points.push(p);
+  }
+
+  for (const [mk, m] of Object.entries(state.months)) {
+    for (const inc of m.income) {
+      const p = index.get(weekStartKey(parseDate(inc.date ?? `${mk}-01`)));
+      if (p) p.income += inc.amount;
+    }
+    for (const t of m.txns) {
+      const p = index.get(weekStartKey(parseDate(t.date ?? `${mk}-01`)));
+      if (!p) continue;
+      if (expenseIds.has(t.bucketId)) p.expenses += t.amount;
+      else if (taxIds.has(t.bucketId)) p.taxes += t.amount;
+    }
+  }
+  for (const p of points) p.net = p.income - p.expenses - p.taxes;
+  return points;
 }
 
 export function goalSaved(goal: Goal): number {

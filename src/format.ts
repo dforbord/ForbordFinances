@@ -56,6 +56,11 @@ export function clamp(n: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, n));
 }
 
+/** YYYY-MM-DD of the Sunday that begins the week containing d. */
+export function weekStartKey(d: Date): string {
+  return dateKey(new Date(d.getFullYear(), d.getMonth(), d.getDate() - d.getDay()));
+}
+
 export function dayLabel(key: string): string {
   return parseDate(key).toLocaleDateString("en-US", {
     weekday: "long",

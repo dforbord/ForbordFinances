@@ -57,7 +57,9 @@ You can also grab a manual snapshot any time via **Backup → Export**.
 ## The app
 
 - **Dashboard** — income vs. expenses / taxes / savings + what's left to
-  allocate, with planned-vs-actual bars per bucket.
+  allocate; two weekly trend charts (net income and spending, last 8 weeks, the
+  current week a running total); a quick Goals widget; and click-to-expand
+  planned-vs-actual breakdowns per bucket type.
 - **Monthly Entry** — log income and spending for any month (‹ › to switch).
 - **Goals** — set a target amount + date and log savings manually with *Add to
   goal*. Monthly model:

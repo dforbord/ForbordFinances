@@ -1,7 +1,14 @@
 import { useState } from "react";
 import { useStore, uid } from "../store";
-import { fmt } from "../format";
+import { monthKey } from "../storage";
+import { fmt, todayKey } from "../format";
 import { MonthSwitch } from "./MonthSwitch";
+
+// Stamp entries with a real date: today if logging the current month, else the
+// 1st of the month being edited. Powers the weekly charts.
+function entryDate(month: string): string {
+  return month === monthKey(new Date()) ? todayKey() : `${month}-01`;
+}
 
 export function MonthlyEntry({
   month,
@@ -33,7 +40,7 @@ export function MonthlyEntry({
     dispatch({
       type: "ADD_INCOME",
       month,
-      entry: { id: uid(), label: incLabel.trim(), amount },
+      entry: { id: uid(), label: incLabel.trim(), amount, date: entryDate(month) },
     });
     setIncLabel("");
     setIncAmt("");
@@ -51,6 +58,7 @@ export function MonthlyEntry({
         label: txnLabel.trim() || (selectedBucket?.name ?? ""),
         amount,
         accountId: isSavings && txnAccount ? txnAccount : undefined,
+        date: entryDate(month),
       },
     });
     setTxnLabel("");

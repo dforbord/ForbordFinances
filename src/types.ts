@@ -20,6 +20,8 @@ export interface IncomeEntry {
   id: string;
   label: string;
   amount: number;
+  /** YYYY-MM-DD the entry was logged — powers the weekly charts. */
+  date?: string;
 }
 
 export interface Txn {
@@ -29,6 +31,8 @@ export interface Txn {
   amount: number;
   /** For savings contributions: which account the money went into. */
   accountId?: string;
+  /** YYYY-MM-DD the entry was logged — powers the weekly charts. */
+  date?: string;
 }
 
 export interface MonthData {
