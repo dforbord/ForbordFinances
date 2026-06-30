@@ -1,13 +1,26 @@
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useMemo,
   useReducer,
+  useRef,
+  useState,
   ReactNode,
 } from "react";
 import { Account, AppState, Bucket, IncomeEntry, Txn } from "./types";
 import { loadState, saveState, uid } from "./storage";
+import {
+  forgetHandle,
+  getSavedHandle,
+  isFileSyncSupported,
+  pickExistingFile,
+  pickNewFile,
+  readFile,
+  verifyPermission,
+  writeFile,
+} from "./filesync";
 
 type Action =
   | { type: "REPLACE"; state: AppState }
@@ -29,7 +42,7 @@ function ensureMonth(state: AppState, month: string): AppState {
   return { ...state, months: { ...state.months, [month]: { income: [], txns: [] } } };
 }
 
-function reducer(state: AppState, action: Action): AppState {
+function baseReducer(state: AppState, action: Action): AppState {
   switch (action.type) {
     case "REPLACE":
       return action.state;
@@ -132,9 +145,38 @@ function reducer(state: AppState, action: Action): AppState {
   }
 }
 
+// Stamp lastModified on every real edit so device/file reconciliation can use
+// last-write-wins. REPLACE carries its own lastModified (from a file or import).
+function reducer(state: AppState, action: Action): AppState {
+  const next = baseReducer(state, action);
+  if (next === state) return state;
+  if (action.type === "REPLACE") return next;
+  return { ...next, lastModified: Date.now() };
+}
+
+export type FileStatus =
+  | "unsupported"
+  | "disconnected"
+  | "needs-permission"
+  | "connected"
+  | "error";
+
+interface FileSync {
+  supported: boolean;
+  status: FileStatus;
+  name: string | null;
+  lastSavedAt: number | null;
+  error: string | null;
+  createFile: () => Promise<void>;
+  openFile: () => Promise<void>;
+  reconnect: () => Promise<void>;
+  disconnect: () => Promise<void>;
+}
+
 interface StoreValue {
   state: AppState;
   dispatch: React.Dispatch<Action>;
+  file: FileSync;
 }
 
 const StoreContext = createContext<StoreValue | null>(null);
@@ -142,11 +184,149 @@ const StoreContext = createContext<StoreValue | null>(null);
 export function StoreProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(reducer, undefined, loadState);
 
+  const supported = isFileSyncSupported();
+  const [status, setStatus] = useState<FileStatus>(supported ? "disconnected" : "unsupported");
+  const [name, setName] = useState<string | null>(null);
+  const [lastSavedAt, setLastSavedAt] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleRef = useRef<FileSystemFileHandle | null>(null);
+  const stateRef = useRef(state);
+  stateRef.current = state;
+  // The lastModified value currently persisted to the file, so the save effect
+  // doesn't echo a write right after we load from the file.
+  const fileAppliedModified = useRef<number>(-1);
+
+  // Decide, on connect, whether the file or local data is newer and sync once.
+  const reconcile = useCallback(async (handle: FileSystemFileHandle, fileState: AppState | null) => {
+    const local = stateRef.current;
+    if (fileState && fileState.lastModified > local.lastModified) {
+      fileAppliedModified.current = fileState.lastModified;
+      dispatch({ type: "REPLACE", state: fileState });
+    } else {
+      await writeFile(handle, local);
+      fileAppliedModified.current = local.lastModified;
+      setLastSavedAt(Date.now());
+    }
+  }, []);
+
+  // On launch, try to silently reconnect to the previously chosen file.
+  useEffect(() => {
+    if (!supported) return;
+    (async () => {
+      try {
+        const handle = await getSavedHandle();
+        if (!handle) return;
+        handleRef.current = handle;
+        setName(handle.name);
+        if (await verifyPermission(handle, false)) {
+          await reconcile(handle, await readFile(handle));
+          setStatus("connected");
+        } else {
+          setStatus("needs-permission");
+        }
+      } catch {
+        setStatus("disconnected");
+      }
+    })();
+  }, [supported, reconcile]);
+
+  // Always cache to localStorage; also push to the file when connected.
   useEffect(() => {
     saveState(state);
-  }, [state]);
+    if (status !== "connected" || !handleRef.current) return;
+    if (state.lastModified === fileAppliedModified.current) return;
+    const handle = handleRef.current;
+    const t = setTimeout(async () => {
+      try {
+        await writeFile(handle, state);
+        fileAppliedModified.current = state.lastModified;
+        setLastSavedAt(Date.now());
+      } catch {
+        setStatus("error");
+        setError("Could not write to the data file. Reconnect it from the Backup tab.");
+      }
+    }, 500);
+    return () => clearTimeout(t);
+  }, [state, status]);
 
-  const value = useMemo(() => ({ state, dispatch }), [state]);
+  const createFile = useCallback(async () => {
+    try {
+      setError(null);
+      const handle = await pickNewFile();
+      handleRef.current = handle;
+      setName(handle.name);
+      await writeFile(handle, stateRef.current);
+      fileAppliedModified.current = stateRef.current.lastModified;
+      setLastSavedAt(Date.now());
+      setStatus("connected");
+    } catch (e) {
+      if ((e as Error).name === "AbortError") return;
+      setStatus("error");
+      setError((e as Error).message);
+    }
+  }, []);
+
+  const openFile = useCallback(async () => {
+    try {
+      setError(null);
+      const handle = await pickExistingFile();
+      handleRef.current = handle;
+      setName(handle.name);
+      await reconcile(handle, await readFile(handle));
+      setStatus("connected");
+    } catch (e) {
+      if ((e as Error).name === "AbortError") return;
+      setStatus("error");
+      setError((e as Error).message);
+    }
+  }, [reconcile]);
+
+  const reconnect = useCallback(async () => {
+    const handle = handleRef.current;
+    if (!handle) return;
+    try {
+      setError(null);
+      if (await verifyPermission(handle, true)) {
+        await reconcile(handle, await readFile(handle));
+        setStatus("connected");
+      } else {
+        setStatus("needs-permission");
+      }
+    } catch (e) {
+      setStatus("error");
+      setError((e as Error).message);
+    }
+  }, [reconcile]);
+
+  const disconnect = useCallback(async () => {
+    await forgetHandle();
+    handleRef.current = null;
+    setName(null);
+    setLastSavedAt(null);
+    setError(null);
+    setStatus(supported ? "disconnected" : "unsupported");
+  }, [supported]);
+
+  const value = useMemo<StoreValue>(
+    () => ({
+      state,
+      dispatch,
+      file: {
+        supported,
+        status,
+        name,
+        lastSavedAt,
+        error,
+        createFile,
+        openFile,
+        reconnect,
+        disconnect,
+      },
+    }),
+    [state, supported, status, name, lastSavedAt, error, createFile, openFile, reconnect, disconnect],
+  );
+
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
 }
 

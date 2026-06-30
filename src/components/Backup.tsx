@@ -1,6 +1,83 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useStore } from "../store";
 import { exportState, parseImported, defaultState } from "../storage";
+
+function timeAgo(ts: number | null): string {
+  if (!ts) return "";
+  const s = Math.round((Date.now() - ts) / 1000);
+  if (s < 5) return "just now";
+  if (s < 60) return `${s}s ago`;
+  if (s < 3600) return `${Math.round(s / 60)}m ago`;
+  return new Date(ts).toLocaleTimeString();
+}
+
+function FileSyncPanel() {
+  const { file } = useStore();
+  const [, forceTick] = useState(0);
+
+  // Re-render the "saved Xs ago" label periodically.
+  useEffect(() => {
+    const id = setInterval(() => forceTick((n) => n + 1), 15000);
+    return () => clearInterval(id);
+  }, []);
+
+  return (
+    <div className="card">
+      <h2>Auto-save to a file</h2>
+      <p className="subtle">
+        Connect a <code>budget.json</code> file and every change writes to it automatically — so
+        your data isn't trapped in this browser. Recommended location:{" "}
+        <code>~/ForbordFinance/budget.json</code> (the nightly backup reads from there).
+      </p>
+
+      {!file.supported ? (
+        <div className="empty">
+          Your browser doesn't support saving to a file. Open this app in <strong>Chrome</strong> or{" "}
+          <strong>Edge</strong> to use auto-save. (Export/Import below still works everywhere.)
+        </div>
+      ) : (
+        <>
+          <div className="filestatus">
+            {file.status === "connected" && (
+              <span className="ok">
+                ● Connected to <strong>{file.name}</strong>
+                {file.lastSavedAt ? ` — saved ${timeAgo(file.lastSavedAt)}` : ""}
+              </span>
+            )}
+            {file.status === "needs-permission" && (
+              <span className="warn">● Permission needed to keep saving to {file.name}</span>
+            )}
+            {file.status === "disconnected" && <span className="warn">● Not connected</span>}
+            {file.status === "error" && <span className="bad">● {file.error ?? "Error"}</span>}
+          </div>
+
+          <div className="toolbar" style={{ marginTop: 12 }}>
+            {file.status === "needs-permission" ? (
+              <button className="primary" onClick={file.reconnect}>
+                🔌 Reconnect &amp; resume saving
+              </button>
+            ) : (
+              <button className="primary" onClick={file.createFile}>
+                ＋ Create / choose data file
+              </button>
+            )}
+            <button onClick={file.openFile}>📂 Open existing budget.json</button>
+            {file.status === "connected" && (
+              <button className="ghost" onClick={file.disconnect}>
+                Disconnect
+              </button>
+            )}
+          </div>
+          <div className="help">
+            Tip: the first time, click <strong>Create / choose data file</strong>, then navigate to
+            the <code>ForbordFinance</code> folder in your Home folder and save it as{" "}
+            <code>budget.json</code>. You'll click to re-grant access once per launch.
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
 
 export function Backup() {
   const { state, dispatch } = useStore();
@@ -19,7 +96,7 @@ export function Backup() {
             "Importing will REPLACE all current data with the contents of this file. Continue?",
           )
         ) {
-          dispatch({ type: "REPLACE", state: imported });
+          dispatch({ type: "REPLACE", state: { ...imported, lastModified: Date.now() } });
           setMsg("✅ Backup imported successfully.");
         }
       } catch (e) {
@@ -34,7 +111,7 @@ export function Backup() {
       <div className="page-head">
         <div>
           <h1>Backup &amp; Data</h1>
-          <div className="subtle">Your data lives in this browser — export regularly to be safe</div>
+          <div className="subtle">Keep your finances safe with auto-save and exports</div>
         </div>
       </div>
 
@@ -54,11 +131,14 @@ export function Backup() {
       </div>
 
       <div className="section">
+        <FileSyncPanel />
+      </div>
+
+      <div className="section">
         <div className="card">
-          <h2>Export</h2>
+          <h2>Export a one-off backup</h2>
           <p className="subtle">
-            Download a <code>.json</code> file with everything — your buckets, accounts, and every
-            month. Keep it somewhere safe (Drive, Dropbox, a folder you back up).
+            Download a <code>.json</code> snapshot of everything. Handy before big changes.
           </p>
           <div className="toolbar">
             <button className="primary" onClick={() => exportState(state)}>
@@ -98,7 +178,10 @@ export function Backup() {
             className="danger"
             onClick={() => {
               if (confirm("Erase ALL data and reset to defaults? Export a backup first!")) {
-                dispatch({ type: "REPLACE", state: defaultState() });
+                dispatch({
+                  type: "REPLACE",
+                  state: { ...defaultState(), lastModified: Date.now() },
+                });
                 setMsg("Data reset to defaults.");
               }
             }}

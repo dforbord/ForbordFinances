@@ -181,6 +181,26 @@ input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: -1
 
 .help { color: var(--muted); font-size: 13px; margin-top: 6px; }
 
+/* File-sync banner + status */
+.filebanner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  color: #f9d28a;
+  padding: 10px 16px;
+  border-radius: 10px;
+  margin-bottom: 20px;
+  font-size: 14px;
+}
+.filebanner button { margin-left: auto; }
+
+.filestatus { font-size: 14px; }
+.filestatus .ok { color: var(--green); }
+.filestatus .warn { color: var(--amber); }
+.filestatus .bad { color: var(--red); }
+
 .right { text-align: right; }
 .muted-row td { color: var(--muted); font-weight: 600; }
 .total-row td { border-top: 2px solid var(--border); font-weight: 700; font-size: 15px; }

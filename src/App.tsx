@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { monthKey } from "./storage";
+import { useStore } from "./store";
 import { Dashboard } from "./components/Dashboard";
 import { MonthlyEntry } from "./components/MonthlyEntry";
 import { Buckets } from "./components/Buckets";
@@ -17,8 +18,12 @@ const NAV: { id: Tab; label: string; icon: string }[] = [
 ];
 
 export function App() {
+  const { file } = useStore();
   const [tab, setTab] = useState<Tab>("dashboard");
   const [month, setMonth] = useState<string>(monthKey(new Date()));
+
+  const showBanner =
+    file.supported && (file.status === "disconnected" || file.status === "needs-permission");
 
   return (
     <div className="app">
@@ -41,6 +46,25 @@ export function App() {
       </nav>
 
       <main className="main">
+        {showBanner && (
+          <div className="filebanner">
+            {file.status === "needs-permission" ? (
+              <>
+                🔌 Reconnect your data file to resume auto-saving.
+                <button className="small" onClick={file.reconnect}>
+                  Reconnect
+                </button>
+              </>
+            ) : (
+              <>
+                💡 Auto-save to a file is off — your data is only in this browser.
+                <button className="small" onClick={() => setTab("backup")}>
+                  Set up
+                </button>
+              </>
+            )}
+          </div>
+        )}
         {tab === "dashboard" && <Dashboard month={month} setMonth={setMonth} />}
         {tab === "monthly" && <MonthlyEntry month={month} setMonth={setMonth} />}
         {tab === "buckets" && <Buckets />}

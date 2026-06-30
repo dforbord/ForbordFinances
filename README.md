@@ -24,15 +24,27 @@ npm run dev
 
 ## Where your data lives & how it persists
 
-- Saved automatically on every change to your browser's **localStorage**, at the
-  origin `http://localhost:5180`. It stays there across restarts, reboots, and
-  app relaunches — that's why the port is pinned to 5180.
-- It's tied to **this browser on this Mac**. Two things to know:
-  - Clearing browser data / "cookies and site data" for localhost would erase it.
-  - A different browser = different storage. Pick one browser and stick with it.
-- **Back it up:** the **Backup** tab exports a `.json` file with everything.
-  Do this now and then and keep the file in iCloud/Drive. That file is your
-  portable, permanent copy and restores in one click via Import.
+Three layers, strongest first:
+
+1. **Auto-save to a real file (recommended).** In the **Backup** tab, click
+   *Create / choose data file* and save it as **`~/ForbordFinance/budget.json`**.
+   From then on, every edit writes to that file automatically. This needs
+   **Chrome or Edge** (Safari/Firefox can't do it), and you click once per launch
+   to re-grant access. `Budget.command` opens Chrome for this reason.
+2. **Nightly backup.** A macOS background job runs at **11:45 PM** and copies
+   `~/ForbordFinance/budget.json` into **`~/Downloads/NightlySync_ForbordFinance/`**
+   as `ForbordFinance-YYYY-MM-DD.json` — but **only on nights the data changed**
+   (it compares content, so untouched days produce nothing).
+   - Install/remove with the double-click scripts in `scripts/`:
+     `install-nightly-sync.command` and `uninstall-nightly-sync.command`.
+   - Activity log: `~/Downloads/NightlySync_ForbordFinance/.sync.log`.
+   - Note: the Mac must be awake at 11:45 PM (or it runs at next wake).
+3. **Browser localStorage** (always on). Instant-load cache at the pinned origin
+   `http://localhost:5180`, so the app works offline and loads fast even before
+   you reconnect the file. Tied to one browser on this Mac; clearing site data
+   erases this layer (but your file + nightly backups are safe).
+
+You can also grab a manual snapshot any time via **Backup → Export**.
 
 ## The app
 
