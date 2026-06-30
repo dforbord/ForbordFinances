@@ -137,7 +137,7 @@ export function Buckets() {
                   ) : (
                     <tr key={b.id}>
                       <td>
-                        <span className="dot" style={{ background: b.color }} />
+                        <span className="dot" style={{ background: TYPE_COLORS[b.type] }} />
                         {b.name}
                       </td>
                       <td>
