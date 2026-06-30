@@ -77,13 +77,21 @@ input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: -1
   height: 100vh;
 }
 .sidebar .brand {
-  font-size: 20px;
-  font-weight: 700;
-  padding: 4px 8px 18px;
+  padding: 2px 4px 20px;
   display: flex;
   align-items: center;
   gap: 8px;
 }
+.brand-mark { font-size: 17px; line-height: 1; flex: none; }
+.brand-name {
+  font-family: "Hoefler Text", "Iowan Old Style", Georgia, "Times New Roman", serif;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.015em;
+  white-space: nowrap;
+  color: var(--text);
+}
+.brand-accent { font-weight: 600; color: #c9a44a; }
 .nav-item {
   text-align: left;
   background: transparent;
