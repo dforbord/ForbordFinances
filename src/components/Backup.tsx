@@ -26,8 +26,9 @@ function FileSyncPanel() {
       <h2>Auto-save to a file</h2>
       <p className="subtle">
         Connect a <code>budget.json</code> file and every change writes to it automatically — so
-        your data isn't trapped in this browser. Recommended location:{" "}
-        <code>~/ForbordFinance/budget.json</code> (the nightly backup reads from there).
+        your data isn't trapped in this browser. Your file lives at{" "}
+        <code>~/Documents/Sync_ForbordFinances/budget.json</code> (the nightly backup reads from
+        there).
       </p>
 
       {!file.supported ? (
@@ -69,9 +70,9 @@ function FileSyncPanel() {
             )}
           </div>
           <div className="help">
-            Tip: the first time, click <strong>Create / choose data file</strong>, then navigate to
-            the <code>ForbordFinance</code> folder in your Home folder and save it as{" "}
-            <code>budget.json</code>. You'll click to re-grant access once per launch.
+            Tip: keep this file in <code>Documents/Sync_ForbordFinances</code> as{" "}
+            <code>budget.json</code> so the nightly backup can find it. You'll click to re-grant
+            access once per launch.
           </div>
         </>
       )}

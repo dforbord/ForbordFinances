@@ -27,11 +27,11 @@ npm run dev
 Three layers, strongest first:
 
 1. **Auto-save to a real file (recommended).** In the **Backup** tab, click
-   *Create / choose data file* and save it as **`~/ForbordFinance/budget.json`**.
+   *Create / choose data file* and save it as **`~/Documents/Sync_ForbordFinances/budget.json`**.
    From then on, every edit writes to that file automatically. This needs
    **Chrome or Edge** (Safari/Firefox can't do it), and you click once per launch
    to re-grant access. `Budget.command` opens Chrome for this reason.
-2. **Nightly backup.** A macOS background job copies `~/ForbordFinance/budget.json`
+2. **Nightly backup.** A macOS background job copies `~/Documents/Sync_ForbordFinances/budget.json`
    into **`~/Downloads/NightlySync_ForbordFinance/`** as
    `ForbordFinance-YYYY-MM-DD.json` — but **only when the data changed** since the
    last backup (content compare, so untouched days produce nothing).
