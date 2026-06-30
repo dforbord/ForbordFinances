@@ -30,6 +30,16 @@ import {
   verifyPermission,
   writeFile,
 } from "./filesync";
+import {
+  cloudConfigured,
+  onAuth,
+  signIn as cloudSignIn,
+  signOutUser,
+  subscribeBudget,
+  writeBudget,
+  User,
+} from "./cloudsync";
+import { ALLOWED_EMAILS } from "./firebase-config";
 
 type Action =
   | { type: "REPLACE"; state: AppState }
@@ -214,12 +224,37 @@ function reducer(state: AppState, action: Action): AppState {
   return { ...next, lastModified: Date.now() };
 }
 
+/** Fill in any missing fields on state arriving from the cloud. */
+function coerce(raw: AppState): AppState {
+  return {
+    version: raw.version ?? 1,
+    buckets: Array.isArray(raw.buckets) ? raw.buckets : [],
+    accounts: Array.isArray(raw.accounts) ? raw.accounts : [],
+    months: raw.months ?? {},
+    goals: Array.isArray(raw.goals) ? raw.goals : [],
+    plannedExpenses: Array.isArray(raw.plannedExpenses) ? raw.plannedExpenses : [],
+    lastModified: raw.lastModified ?? 0,
+  };
+}
+
 export type FileStatus =
   | "unsupported"
   | "disconnected"
   | "needs-permission"
   | "connected"
   | "error";
+
+export type CloudStatus = "connecting" | "synced" | "offline";
+
+interface CloudSync {
+  configured: boolean;
+  authReady: boolean;
+  user: { email: string | null; name: string | null } | null;
+  status: CloudStatus;
+  error: string | null;
+  signIn: () => Promise<void>;
+  signOut: () => Promise<void>;
+}
 
 interface FileSync {
   supported: boolean;
@@ -237,6 +272,7 @@ interface StoreValue {
   state: AppState;
   dispatch: React.Dispatch<Action>;
   file: FileSync;
+  cloud: CloudSync;
 }
 
 const StoreContext = createContext<StoreValue | null>(null);
@@ -368,6 +404,83 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setStatus(supported ? "disconnected" : "unsupported");
   }, [supported]);
 
+  // ── Live cloud sync (Firebase) ──────────────────────────────────────────
+  const [user, setUser] = useState<User | null>(null);
+  const [authReady, setAuthReady] = useState(!cloudConfigured);
+  const [cloudStatus, setCloudStatus] = useState<CloudStatus>("connecting");
+  const [cloudError, setCloudError] = useState<string | null>(null);
+  // lastModified currently reflected from the cloud — avoids echoing it back.
+  const cloudAppliedModified = useRef<number>(-1);
+
+  useEffect(() => {
+    if (!cloudConfigured) return;
+    return onAuth((u) => {
+      if (u && ALLOWED_EMAILS.length > 0 && (!u.email || !ALLOWED_EMAILS.includes(u.email))) {
+        setCloudError(`${u.email ?? "That account"} isn't on the allowed list.`);
+        signOutUser();
+        setUser(null);
+        setAuthReady(true);
+        return;
+      }
+      setCloudError(null);
+      setUser(u);
+      setAuthReady(true);
+    });
+  }, []);
+
+  // Subscribe to the shared doc; apply remote changes that are newer than ours.
+  useEffect(() => {
+    if (!cloudConfigured || !user) return;
+    setCloudStatus("connecting");
+    return subscribeBudget(
+      (remote) => {
+        if (remote == null) {
+          // No cloud copy yet → seed it from whatever this device has.
+          cloudAppliedModified.current = stateRef.current.lastModified;
+          writeBudget(stateRef.current).catch(() => {});
+          setCloudStatus("synced");
+          return;
+        }
+        const incoming = coerce(remote);
+        if (incoming.lastModified > stateRef.current.lastModified) {
+          cloudAppliedModified.current = incoming.lastModified;
+          dispatch({ type: "REPLACE", state: incoming });
+        }
+        setCloudStatus("synced");
+      },
+      () => setCloudStatus("offline"),
+    );
+  }, [user]);
+
+  // Push local edits up (debounced), skipping anything that came from the cloud.
+  useEffect(() => {
+    if (!cloudConfigured || !user) return;
+    if (state.lastModified === cloudAppliedModified.current) return;
+    const t = setTimeout(() => {
+      writeBudget(state)
+        .then(() => setCloudStatus("synced"))
+        .catch(() => setCloudStatus("offline"));
+    }, 600);
+    return () => clearTimeout(t);
+  }, [state, user]);
+
+  const doSignIn = useCallback(async () => {
+    try {
+      setCloudError(null);
+      await cloudSignIn();
+    } catch (e) {
+      const name = (e as { code?: string }).code ?? "";
+      if (!name.includes("popup-closed") && !name.includes("cancelled")) {
+        setCloudError((e as Error).message);
+      }
+    }
+  }, []);
+
+  const doSignOut = useCallback(async () => {
+    await signOutUser();
+    setUser(null);
+  }, []);
+
   const value = useMemo<StoreValue>(
     () => ({
       state,
@@ -383,8 +496,20 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         reconnect,
         disconnect,
       },
+      cloud: {
+        configured: cloudConfigured,
+        authReady,
+        user: user ? { email: user.email, name: user.displayName } : null,
+        status: cloudStatus,
+        error: cloudError,
+        signIn: doSignIn,
+        signOut: doSignOut,
+      },
     }),
-    [state, supported, status, name, lastSavedAt, error, createFile, openFile, reconnect, disconnect],
+    [
+      state, supported, status, name, lastSavedAt, error, createFile, openFile, reconnect, disconnect,
+      authReady, user, cloudStatus, cloudError, doSignIn, doSignOut,
+    ],
   );
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;

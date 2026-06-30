@@ -54,6 +54,13 @@ the dated backups.
 
 You can also grab a manual snapshot any time via **Backup → Export**.
 
+### Optional: live cloud sync (share with another person)
+
+Want it on a free hosted URL that syncs live between two people (e.g. you + your
+spouse), behind a Google sign-in? Follow **[SETUP-SYNC.md](SETUP-SYNC.md)** —
+it's free on Firebase's tier. Until you paste your keys into
+`src/firebase-config.ts`, the app stays fully local with no sign-in.
+
 ## The app
 
 - **Dashboard** — income vs. expenses / taxes / savings + what's left to

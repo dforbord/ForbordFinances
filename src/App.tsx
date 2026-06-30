@@ -7,6 +7,7 @@ import { Goals } from "./components/Goals";
 import { Calendar } from "./components/Calendar";
 import { Savings } from "./components/Savings";
 import { Backup } from "./components/Backup";
+import { SignIn } from "./components/SignIn";
 
 type Tab = "home" | "log" | "goals" | "savings" | "calendar" | "backup";
 
@@ -20,9 +21,21 @@ const NAV: { id: Tab; label: string; icon: string }[] = [
 ];
 
 export function App() {
-  const { file } = useStore();
+  const { file, cloud } = useStore();
   const [tab, setTab] = useState<Tab>("home");
   const [month, setMonth] = useState<string>(monthKey(new Date()));
+
+  // When cloud sync is configured, require Google sign-in before showing data.
+  if (cloud.configured && !cloud.authReady) {
+    return (
+      <div className="signin">
+        <div className="subtle">Loading…</div>
+      </div>
+    );
+  }
+  if (cloud.configured && !cloud.user) {
+    return <SignIn />;
+  }
 
   const showBanner =
     file.supported && (file.status === "disconnected" || file.status === "needs-permission");
@@ -47,9 +60,26 @@ export function App() {
           </button>
         ))}
         <div className="nav-spacer" />
-        <div className="subtle" style={{ padding: "0 12px" }}>
-          Data is saved locally in this browser. Use Backup to export a file.
-        </div>
+        {cloud.configured && cloud.user ? (
+          <div className="cloud-foot">
+            <div className="cloud-status">
+              <span className={`cloud-dot ${cloud.status}`} />
+              {cloud.status === "synced"
+                ? "Synced"
+                : cloud.status === "connecting"
+                  ? "Connecting…"
+                  : "Offline — will retry"}
+            </div>
+            <div className="subtle cloud-email">{cloud.user.email}</div>
+            <button className="ghost small" onClick={cloud.signOut}>
+              Sign out
+            </button>
+          </div>
+        ) : (
+          <div className="subtle" style={{ padding: "0 12px" }}>
+            Data is saved locally in this browser. Use Backup to export a file.
+          </div>
+        )}
       </nav>
 
       <main className="main">

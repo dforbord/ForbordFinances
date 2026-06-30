@@ -92,6 +92,19 @@ input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: -1
   color: var(--text);
 }
 .brand-accent { font-weight: 600; color: #c9a44a; }
+
+/* Sign-in screen */
+.signin { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
+.signin-card { max-width: 380px; width: 100%; text-align: center; display: flex; flex-direction: column; gap: 16px; align-items: center; }
+
+/* Cloud sync footer in sidebar */
+.cloud-foot { padding: 0 12px; display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
+.cloud-status { font-size: 13px; display: flex; align-items: center; gap: 7px; }
+.cloud-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+.cloud-dot.synced { background: var(--green); }
+.cloud-dot.connecting { background: var(--amber); }
+.cloud-dot.offline { background: var(--red); }
+.cloud-email { font-size: 12px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .nav-item {
   text-align: left;
   background: transparent;

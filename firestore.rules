@@ -1,0 +1,19 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // The shared household budget — only the two approved Google accounts may
+    // read or write it. Replace these with YOUR real emails (same as
+    // ALLOWED_EMAILS in src/firebase-config.ts).
+    match /budgets/household {
+      allow read, write: if request.auth != null
+        && request.auth.token.email in [
+          "you@gmail.com",
+          "wife@gmail.com"
+        ];
+    }
+    // Everything else is denied.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
