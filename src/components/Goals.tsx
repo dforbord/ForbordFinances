@@ -18,9 +18,9 @@ const STATUS_META: Record<GoalStatus, { label: string; color: string }> = {
 };
 
 function monthsText(m: number): string {
-  if (m <= 0) return "due now";
-  if (m < 1) return `${Math.round(m * 30.4375)} days left`;
-  return `${m.toFixed(1)} months left`;
+  if (m <= 0) return "final month";
+  if (m === 1) return "1 month left";
+  return `${m} months left`;
 }
 
 export function Goals() {
@@ -155,7 +155,7 @@ function GoalCard({
   const { dispatch } = useStore();
   const meta = STATUS_META[stats.status];
   const savedPct = stats.fractionSaved * 100;
-  const markerPct = stats.expectedFractionOfTarget * 100;
+  const markerPct = stats.markerFraction * 100;
 
   const [amt, setAmt] = useState("");
   const [note, setNote] = useState("");
@@ -202,20 +202,22 @@ function GoalCard({
         </span>
       </div>
 
-      <div className="goalbar" title={`Plan says you should be at ${fmt(stats.expectedByNow)}`}>
+      <div className="goalbar" title={`This month's target: ${fmt(stats.monthlyTarget)}`}>
         <div className="goalbar-fill" style={{ width: `${savedPct}%`, background: goal.color }} />
         {stats.status !== "reached" && (
           <div className="goalbar-marker" style={{ left: `${markerPct}%` }} />
         )}
       </div>
       <div className="goalbar-legend subtle">
-        <span>{savedPct.toFixed(0)}% saved</span>
-        <span>▮ marker = on-pace target now ({fmt(stats.expectedByNow)})</span>
+        <span>{fmt(stats.saved)} of {fmt(stats.target)}</span>
+        <span>
+          ▮ {fmt(stats.saveThisMonth)} left to this month's {fmt(stats.monthlyTarget)} target
+        </span>
       </div>
 
       <div className="goal-stats">
-        <Stat label="Remaining" value={fmt(stats.remaining)} />
-        <Stat label="Save each month" value={`${fmt(stats.requiredMonthly)}/mo`} big />
+        <Stat label="Monthly goal" value={`${fmt(stats.standardMonthly)}/mo`} />
+        <Stat label="Save this month" value={fmt(stats.saveThisMonth)} big />
         <Stat label={third.label} value={third.value} />
       </div>
 
@@ -223,30 +225,21 @@ function GoalCard({
         {stats.status === "reached" && <>Goal reached — nicely done.</>}
         {stats.status === "ahead" && (
           <>
-            You're <strong>{fmt(stats.aheadAmount)} ahead</strong> of an even pace. From here you
-            only need <strong>{fmt(stats.requiredMonthly)}/mo</strong> to finish on time
-            {stats.baselineMonthly > stats.requiredMonthly + 1
-              ? ` (under your ${fmt(stats.baselineMonthly)}/mo starting plan)`
-              : ""}
-            .
+            You're <strong>{fmt(stats.aheadAmount)} ahead</strong>. You only need{" "}
+            <strong>{fmt(stats.saveThisMonth)}</strong> this month to hit this month's target.
           </>
         )}
         {stats.status === "on-track" && (
           <>
-            On pace. Keep saving <strong>{fmt(stats.requiredMonthly)}/mo</strong> to land on time.
+            On track. Save <strong>{fmt(stats.saveThisMonth)}</strong> this month to stay on the
+            monthly target.
           </>
         )}
         {stats.status === "behind" && (
           <>
-            You're <strong>{fmt(stats.behindAmount)} behind</strong> an even pace. Save{" "}
-            <strong>{fmt(stats.requiredMonthly)}/mo</strong> from here to catch up and still finish
-            on time
-            {stats.extraPerMonth > 1
-              ? ` — that's ${fmt(stats.extraPerMonth)}/mo more than your ${fmt(
-                  stats.baselineMonthly,
-                )}/mo starting plan`
-              : ""}
-            .
+            You're <strong>{fmt(stats.behindAmount)} behind</strong>. Save{" "}
+            <strong>{fmt(stats.saveThisMonth)}</strong> this month — your{" "}
+            {fmt(stats.standardMonthly)} monthly goal plus {fmt(stats.behindAmount)} catch-up.
           </>
         )}
         {stats.status === "overdue" && (

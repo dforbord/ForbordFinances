@@ -1,34 +1,38 @@
 import { AppState, Goal } from "./types";
 import { clamp, parseDate } from "./format";
 
-const DAYS_PER_MONTH = 30.4375;
-
 export type GoalStatus = "reached" | "ahead" | "on-track" | "behind" | "overdue";
 
 export interface GoalStats {
   saved: number;
   target: number;
   remaining: number;
+  /** saved / target — the only thing that animates on the bar. */
   fractionSaved: number;
-  /** 0..1 of target where an even, on-time plan says you should be now. */
-  expectedFractionOfTarget: number;
-  expectedByNow: number;
+  /** Where the end-of-this-month checkpoint sits on the bar (0..1 of target). */
+  markerFraction: number;
+  /** Fixed monthly goal: (target − startAmount) ÷ months in plan. Never changes. */
+  standardMonthly: number;
+  /** Cumulative $ you should have by the END of the current month (the marker). */
+  monthlyTarget: number;
+  /** What to save THIS month to hit the marker = standard + carried-in shortfall. */
+  saveThisMonth: number;
+  /** saved − where you should be at the START of this month. +ahead / −behind. */
   delta: number;
-  status: GoalStatus;
-  daysLeft: number;
-  monthsLeft: number;
-  /** The headline: average $/month you must save from now to finish on time. */
-  requiredMonthly: number;
-  /** The even rate the goal started with (target − startAmount over the full span). */
-  baselineMonthly: number;
-  /** How much more per month than the original plan you now need (catch-up premium). */
-  extraPerMonth: number;
   aheadAmount: number;
   behindAmount: number;
+  status: GoalStatus;
+  /** Whole months remaining (including the current one). */
+  monthsLeft: number;
 }
 
 export function goalSaved(goal: Goal): number {
   return goal.startAmount + (goal.contributions ?? []).reduce((s, c) => s + c.amount, 0);
+}
+
+/** Whole calendar-month steps between two dates (boundaries crossed). */
+function monthsDiff(a: Date, b: Date): number {
+  return (b.getFullYear() - a.getFullYear()) * 12 + (b.getMonth() - a.getMonth());
 }
 
 export function computeGoal(_state: AppState, goal: Goal, now: Date = new Date()): GoalStats {
@@ -36,25 +40,26 @@ export function computeGoal(_state: AppState, goal: Goal, now: Date = new Date()
   const target = goal.targetAmount;
   const remaining = Math.max(0, target - saved);
 
-  // Use continuous millisecond precision so the plan line advances smoothly
-  // instead of jumping a whole day's worth the moment the date ticks over.
-  const start = parseDate(goal.startDate).getTime();
-  const end = parseDate(goal.targetDate).getTime();
-  const nowMs = now.getTime();
-  const totalMs = Math.max(1, end - start);
-  const elapsedMs = clamp(nowMs - start, 0, totalMs);
-  const daysLeft = Math.max(0, (end - nowMs) / 86_400_000);
-  const monthsLeft = daysLeft / DAYS_PER_MONTH;
-  const totalMonths = totalMs / 86_400_000 / DAYS_PER_MONTH;
+  const start = parseDate(goal.startDate);
+  const end = parseDate(goal.targetDate);
 
-  // Even, on-time plan line — used only to say how far ahead/behind you are.
-  const frac = elapsedMs / totalMs;
-  const expectedByNow = goal.startAmount + (target - goal.startAmount) * frac;
-  const delta = saved - expectedByNow;
+  const totalMonths = Math.max(1, monthsDiff(start, end));
+  const standardMonthly = Math.max(0, target - goal.startAmount) / totalMonths;
+
+  // Whole months elapsed since the start (stepwise — no daily drift).
+  const monthsElapsed = clamp(monthsDiff(start, now), 0, totalMonths);
+  const monthsThroughThisMonth = Math.min(monthsElapsed + 1, totalMonths);
+
+  // Plan checkpoints (depend only on the plan, never on actual saving).
+  const startOfMonthTarget = goal.startAmount + monthsElapsed * standardMonthly;
+  const monthlyTarget = goal.startAmount + monthsThroughThisMonth * standardMonthly;
+
+  const delta = saved - startOfMonthTarget; // + ahead / − behind vs. start of month
+  const saveThisMonth = Math.max(0, monthlyTarget - saved); // standard + carried shortfall
   const tol = Math.max(50, target * 0.02);
 
   const reached = saved >= target;
-  const overdue = !reached && nowMs >= end;
+  const overdue = !reached && now >= end;
   let status: GoalStatus;
   if (reached) status = "reached";
   else if (overdue) status = "overdue";
@@ -62,27 +67,19 @@ export function computeGoal(_state: AppState, goal: Goal, now: Date = new Date()
   else if (delta < -tol) status = "behind";
   else status = "on-track";
 
-  // The average rate you need from here — rises if behind, falls if ahead.
-  const requiredMonthly = monthsLeft > 0 ? remaining / monthsLeft : remaining;
-  const baselineMonthly =
-    totalMonths > 0 ? Math.max(0, target - goal.startAmount) / totalMonths : remaining;
-  const extraPerMonth = Math.max(0, requiredMonthly - baselineMonthly);
-
   return {
     saved,
     target,
     remaining,
     fractionSaved: target > 0 ? clamp(saved / target, 0, 1) : 0,
-    expectedFractionOfTarget: target > 0 ? clamp(expectedByNow / target, 0, 1) : 0,
-    expectedByNow,
+    markerFraction: target > 0 ? clamp(monthlyTarget / target, 0, 1) : 0,
+    standardMonthly,
+    monthlyTarget,
+    saveThisMonth,
     delta,
-    status,
-    daysLeft,
-    monthsLeft,
-    requiredMonthly,
-    baselineMonthly,
-    extraPerMonth,
     aheadAmount: Math.max(0, delta),
     behindAmount: Math.max(0, -delta),
+    status,
+    monthsLeft: Math.max(0, totalMonths - monthsElapsed),
   };
 }
