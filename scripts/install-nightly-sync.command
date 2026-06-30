@@ -29,6 +29,7 @@ cat > "$PLIST" <<EOF
     <key>Hour</key><integer>23</integer>
     <key>Minute</key><integer>45</integer>
   </dict>
+  <key>RunAtLoad</key><true/>
   <key>StandardOutPath</key><string>$BACKUP_DIR/.sync.log</string>
   <key>StandardErrorPath</key><string>$BACKUP_DIR/.sync.log</string>
 </dict>
@@ -40,7 +41,7 @@ launchctl bootout "gui/$(id -u)/$LABEL" 2>/dev/null || launchctl unload "$PLIST"
 launchctl bootstrap "gui/$(id -u)" "$PLIST" 2>/dev/null || launchctl load "$PLIST"
 
 echo ""
-echo "✅ Nightly backup installed (runs daily at 11:45 PM)."
+echo "✅ Nightly backup installed (daily at 11:45 PM, plus at each login/wake)."
 echo "   Live file it watches : $LIVE_DIR/budget.json"
 echo "   Backups go to        : $BACKUP_DIR"
 echo "   Log                  : $BACKUP_DIR/.sync.log"

@@ -31,14 +31,17 @@ Three layers, strongest first:
    From then on, every edit writes to that file automatically. This needs
    **Chrome or Edge** (Safari/Firefox can't do it), and you click once per launch
    to re-grant access. `Budget.command` opens Chrome for this reason.
-2. **Nightly backup.** A macOS background job runs at **11:45 PM** and copies
-   `~/ForbordFinance/budget.json` into **`~/Downloads/NightlySync_ForbordFinance/`**
-   as `ForbordFinance-YYYY-MM-DD.json` — but **only on nights the data changed**
-   (it compares content, so untouched days produce nothing).
+2. **Nightly backup.** A macOS background job copies `~/ForbordFinance/budget.json`
+   into **`~/Downloads/NightlySync_ForbordFinance/`** as
+   `ForbordFinance-YYYY-MM-DD.json` — but **only when the data changed** since the
+   last backup (content compare, so untouched days produce nothing).
+   - **Runs** nightly at **11:45 PM**, and also at **login/wake** so a night the
+     Mac was asleep or powered off gets caught up the next time it's on.
+   - **Retention:** keeps the **last 7 daily** backups plus the **most recent
+     backup of each earlier month**, forever; older dailies are pruned.
    - Install/remove with the double-click scripts in `scripts/`:
      `install-nightly-sync.command` and `uninstall-nightly-sync.command`.
    - Activity log: `~/Downloads/NightlySync_ForbordFinance/.sync.log`.
-   - Note: the Mac must be awake at 11:45 PM (or it runs at next wake).
 3. **Browser localStorage** (always on). Instant-load cache at the pinned origin
    `http://localhost:5180`, so the app works offline and loads fast even before
    you reconnect the file. Tied to one browser on this Mac; clearing site data
