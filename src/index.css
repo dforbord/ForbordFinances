@@ -202,15 +202,18 @@ input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: -1
 .filestatus .warn { color: var(--amber); }
 .filestatus .bad { color: var(--red); }
 
-/* Weekly charts */
-.chart-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-@media (max-width: 720px) { .chart-row { grid-template-columns: 1fr; } }
+/* Weekly charts — wide side-by-side, auto-stack when the screen narrows. */
+.chart-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr));
+  gap: 16px;
+}
 .chart-card { padding: 14px 16px; }
 .chart-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px; }
 .chart-title { font-size: 13px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
 .chart-latest { font-size: 20px; font-weight: 700; }
 .chart-delta { font-size: 12px; font-weight: 500; }
-.chart-svg { width: 100%; height: 130px; display: block; }
+.chart-svg { width: 100%; height: 150px; display: block; }
 .chart-zero { stroke: var(--border); stroke-width: 1; stroke-dasharray: 3 3; }
 .chart-xlabel { fill: var(--muted); font-size: 9px; }
 

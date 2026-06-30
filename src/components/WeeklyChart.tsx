@@ -14,11 +14,11 @@ export function WeeklyChart({
   color: string;
   points: Point[];
 }) {
-  const W = 320;
-  const H = 130;
-  const padX = 10;
+  const W = 480;
+  const H = 150;
+  const padX = 12;
   const padTop = 16;
-  const padBottom = 22;
+  const padBottom = 24;
   const n = points.length;
 
   const values = points.map((p) => p.value);
