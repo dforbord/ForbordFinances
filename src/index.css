@@ -225,6 +225,7 @@ input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: -1
 .goalbar-legend { display: flex; justify-content: space-between; font-size: 12px; margin-top: 6px; }
 .goal-stats { display: flex; gap: 28px; margin: 16px 0; flex-wrap: wrap; }
 .goal-stat-value { font-size: 20px; font-weight: 700; margin-top: 2px; }
+.goal-stat-value.big { font-size: 26px; color: var(--accent); }
 .goal-callout { padding: 12px 14px; border-radius: 10px; font-size: 14px; line-height: 1.5; }
 
 /* Calendar */

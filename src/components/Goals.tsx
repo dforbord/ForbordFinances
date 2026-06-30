@@ -23,15 +23,6 @@ function monthsText(m: number): string {
   return `${m.toFixed(1)} months left`;
 }
 
-function etaText(stats: GoalStats): string {
-  if (!isFinite(stats.finishEtaMonths)) return "you'd never reach it at your current pace";
-  const diff = stats.finishEtaMonths - stats.monthsLeft; // + = late, - = early
-  if (Math.abs(diff) < 0.3) return "right on time";
-  const amt = Math.abs(diff);
-  const unit = amt < 1 ? `${Math.round(amt * 30.4375)} days` : `${amt.toFixed(1)} months`;
-  return diff > 0 ? `about ${unit} late` : `about ${unit} early`;
-}
-
 export function Goals() {
   const { state, dispatch } = useStore();
 
@@ -217,10 +208,10 @@ function GoalCard({
 
       <div className="goal-stats">
         <Stat label="Remaining" value={fmt(stats.remaining)} />
-        <Stat label="To finish on time" value={`${fmt(stats.requiredMonthly)}/mo`} />
+        <Stat label="Save each month" value={`${fmt(stats.requiredMonthly)}/mo`} big />
         <Stat
-          label="Your pace"
-          value={stats.pace > 0 ? `${fmt(stats.pace)}/mo` : "—"}
+          label={stats.delta >= 0 ? "Ahead by" : "Behind by"}
+          value={fmt(Math.abs(stats.delta))}
         />
       </div>
 
@@ -228,36 +219,36 @@ function GoalCard({
         {stats.status === "reached" && <>Goal reached — nicely done.</>}
         {stats.status === "ahead" && (
           <>
-            You're <strong>{fmt(stats.aheadAmount)} ahead</strong> of where you'd need to be. Keep
-            this up and you'll arrive {etaText(stats)}.
+            You're <strong>{fmt(stats.aheadAmount)} ahead</strong> of an even pace. From here you
+            only need <strong>{fmt(stats.requiredMonthly)}/mo</strong> to finish on time
+            {stats.baselineMonthly > stats.requiredMonthly + 1
+              ? ` (under your ${fmt(stats.baselineMonthly)}/mo starting plan)`
+              : ""}
+            .
           </>
         )}
         {stats.status === "on-track" && (
           <>
-            On pace. Save about <strong>{fmt(stats.requiredMonthly)}/mo</strong> from here to land on
-            time.
+            On pace. Keep saving <strong>{fmt(stats.requiredMonthly)}/mo</strong> to land on time.
           </>
         )}
         {stats.status === "behind" && (
           <>
-            You're <strong>{fmt(stats.behindAmount)} behind</strong> pace. Add{" "}
-            <strong>{fmt(stats.catchUpNextMonth)}</strong> next month to catch up, then{" "}
-            {fmt(stats.requiredMonthly)}/mo to finish on time.
+            You're <strong>{fmt(stats.behindAmount)} behind</strong> an even pace. Save{" "}
+            <strong>{fmt(stats.requiredMonthly)}/mo</strong> from here to catch up and still finish
+            on time
+            {stats.extraPerMonth > 1
+              ? ` — that's ${fmt(stats.extraPerMonth)}/mo more than your ${fmt(
+                  stats.baselineMonthly,
+                )}/mo starting plan`
+              : ""}
+            .
           </>
         )}
         {stats.status === "overdue" && (
           <>Target date passed with {fmt(stats.remaining)} to go. Edit the date or add the rest.</>
         )}
       </div>
-
-      {stats.pace > 0 && stats.status !== "reached" && (
-        <div className="help">
-          At your current pace (~{fmt(stats.pace)}/mo) you'll reach about{" "}
-          <strong>{fmt(stats.projectedFinal)}</strong> by the deadline —{" "}
-          {stats.projectedDelta >= 0 ? `${fmt(stats.projectedDelta)} over goal, ` : `${fmt(-stats.projectedDelta)} short, `}
-          finishing {etaText(stats)}.
-        </div>
-      )}
 
       <div className="row-form" style={{ marginTop: 14, marginBottom: 0 }}>
         <div className="field amt">
@@ -336,11 +327,11 @@ function GoalCard({
   );
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
+function Stat({ label, value, big }: { label: string; value: string; big?: boolean }) {
   return (
     <div className="goal-stat">
       <div className="subtle">{label}</div>
-      <div className="goal-stat-value">{value}</div>
+      <div className={`goal-stat-value ${big ? "big" : ""}`}>{value}</div>
     </div>
   );
 }

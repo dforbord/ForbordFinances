@@ -2,10 +2,6 @@ import { AppState, Goal } from "./types";
 import { clamp, daysBetween, parseDate } from "./format";
 
 const DAYS_PER_MONTH = 30.4375;
-// Recent-pace window. Wide (~4 months) so lumpy or quarterly saving — e.g. a
-// bonus every few months — doesn't read as "behind" just because last month
-// happened to be quiet. Bump this up further to smooth even more.
-const RECENT_WINDOW_DAYS = 120;
 
 export type GoalStatus = "reached" | "ahead" | "on-track" | "behind" | "overdue";
 
@@ -14,27 +10,21 @@ export interface GoalStats {
   target: number;
   remaining: number;
   fractionSaved: number;
-  /** 0..1 of target where the straight-line plan says you should be now. */
+  /** 0..1 of target where an even, on-time plan says you should be now. */
   expectedFractionOfTarget: number;
   expectedByNow: number;
   delta: number;
   status: GoalStatus;
   daysLeft: number;
   monthsLeft: number;
-  monthsElapsed: number;
-  /** How much you must save per month from now to finish on time. */
+  /** The headline: average $/month you must save from now to finish on time. */
   requiredMonthly: number;
-  /** Your effective recent savings pace ($/month). */
-  pace: number;
-  projectedFinal: number;
-  projectedDelta: number;
-  /** Months from now to hit target at your current pace (Infinity if pace is 0). */
-  finishEtaMonths: number;
-  catchUpNextMonth: number;
+  /** The even rate the goal started with (target − startAmount over the full span). */
+  baselineMonthly: number;
+  /** How much more per month than the original plan you now need (catch-up premium). */
+  extraPerMonth: number;
   aheadAmount: number;
   behindAmount: number;
-  /** 0..1 — how much the status leans on trajectory vs. current position. */
-  trajectoryWeight: number;
 }
 
 export function goalSaved(goal: Goal): number {
@@ -52,56 +42,28 @@ export function computeGoal(_state: AppState, goal: Goal, now: Date = new Date()
   const elapsedDays = clamp(daysBetween(start, now), 0, totalDays);
   const daysLeft = Math.max(0, daysBetween(now, end));
   const monthsLeft = daysLeft / DAYS_PER_MONTH;
-  const monthsElapsed = Math.max(0, daysBetween(start, now) / DAYS_PER_MONTH);
+  const totalMonths = totalDays / DAYS_PER_MONTH;
 
+  // Even, on-time plan line — used only to say how far ahead/behind you are.
   const frac = elapsedDays / totalDays;
   const expectedByNow = goal.startAmount + (target - goal.startAmount) * frac;
   const delta = saved - expectedByNow;
+  const tol = Math.max(50, target * 0.02);
 
-  // --- Pace (from manual contributions) ---
-  const contribs = goal.contributions ?? [];
-  const startKey = goal.startDate;
-  const sinceStart = contribs
-    .filter((c) => c.date >= startKey)
-    .reduce((s, c) => s + c.amount, 0);
-  const recentCutoff = new Date(now.getTime() - RECENT_WINDOW_DAYS * 86_400_000);
-  const recentContrib = contribs
-    .filter((c) => parseDate(c.date) >= recentCutoff)
-    .reduce((s, c) => s + c.amount, 0);
-
-  const overallPace = sinceStart / Math.max(monthsElapsed, 0.5);
-  // Divide by the window, but never by more time than has actually elapsed, so
-  // a young goal isn't understated by the wide window.
-  const recentMonths = Math.min(RECENT_WINDOW_DAYS / DAYS_PER_MONTH, Math.max(monthsElapsed, 0.5));
-  const recentPace = recentContrib / recentMonths;
-  const pace = 0.6 * recentPace + 0.4 * overallPace;
-
-  const requiredMonthly = monthsLeft > 0 ? remaining / monthsLeft : remaining;
-  const projectedFinal = saved + pace * monthsLeft;
-  const projectedDelta = projectedFinal - target;
-  const finishEtaMonths = pace > 0 ? remaining / pace : Infinity;
-
-  const fracNext = clamp((elapsedDays + DAYS_PER_MONTH) / totalDays, 0, 1);
-  const expectedNext = goal.startAmount + (target - goal.startAmount) * fracNext;
-  const catchUpNextMonth = Math.max(0, expectedNext - saved);
-
-  // --- Status: starts as "are we on pace right now" (position), and shifts
-  //     toward "will our trajectory get us there" (projection) as time passes. ---
   const reached = saved >= target;
   const overdue = !reached && now >= end;
-
-  const posRatio = expectedByNow > 0 ? saved / expectedByNow : saved >= target ? 2 : 1;
-  const paceRatio = target > 0 ? projectedFinal / target : 1;
-  const trajectoryWeight = clamp(monthsElapsed / 3, 0, 1);
-  const score = (1 - trajectoryWeight) * posRatio + trajectoryWeight * paceRatio;
-
   let status: GoalStatus;
   if (reached) status = "reached";
   else if (overdue) status = "overdue";
-  else if (monthsElapsed < 0.2 && sinceStart === 0) status = "on-track"; // just started
-  else if (score >= 1.05) status = "ahead";
-  else if (score >= 0.97) status = "on-track";
-  else status = "behind";
+  else if (delta > tol) status = "ahead";
+  else if (delta < -tol) status = "behind";
+  else status = "on-track";
+
+  // The average rate you need from here — rises if behind, falls if ahead.
+  const requiredMonthly = monthsLeft > 0 ? remaining / monthsLeft : remaining;
+  const baselineMonthly =
+    totalMonths > 0 ? Math.max(0, target - goal.startAmount) / totalMonths : remaining;
+  const extraPerMonth = Math.max(0, requiredMonthly - baselineMonthly);
 
   return {
     saved,
@@ -114,15 +76,10 @@ export function computeGoal(_state: AppState, goal: Goal, now: Date = new Date()
     status,
     daysLeft,
     monthsLeft,
-    monthsElapsed,
     requiredMonthly,
-    pace,
-    projectedFinal,
-    projectedDelta,
-    finishEtaMonths,
-    catchUpNextMonth,
+    baselineMonthly,
+    extraPerMonth,
     aheadAmount: Math.max(0, delta),
     behindAmount: Math.max(0, -delta),
-    trajectoryWeight,
   };
 }

@@ -60,10 +60,11 @@ You can also grab a manual snapshot any time via **Backup → Export**.
   allocate, with planned-vs-actual bars per bucket.
 - **Monthly Entry** — log income and spending for any month (‹ › to switch).
 - **Goals** — set a target amount + date and log savings toward it manually with
-  *Add to goal*. Shows ahead / on pace / behind, how much to add next month to
-  catch up, how far ahead you are, and a projection + finish ETA from your pace.
-  The status starts as a simple on-pace check and shifts toward a trajectory
-  projection as months of contributions accumulate.
+  *Add to goal*. The headline is the **average $/month you need from here** to
+  finish on time (remaining ÷ months left) — it rises automatically when you're
+  behind (your catch-up rate) and falls when you're ahead. Also shows how far
+  **ahead/behind** an even pace you are. No guessing from expenses or recent
+  pace, so a deliberately uneven (e.g. front-loaded) saving plan won't false-alarm.
 - **Expense Calendar** — plan future one-off costs (travel, events) on a monthly
   calendar. Click a day to add an item, or block off a multi-day range for a
   single expense; each entry is filed into a bucket you choose.
