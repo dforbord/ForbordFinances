@@ -262,7 +262,12 @@ input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: -1
 }
 .cal-item-label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .cal-item-amt { font-variant-numeric: tabular-nums; opacity: 0.85; }
+.cal-item-cont { opacity: 0.7; font-style: italic; }
 .cal-more { font-size: 11px; color: var(--muted); }
+.cal-multi { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; font-size: 14px; color: var(--muted); margin-bottom: 14px; }
+.cal-check { display: flex; align-items: center; gap: 6px; cursor: pointer; }
+.cal-check input { width: auto; }
+.cal-range-inputs { display: flex; align-items: center; gap: 8px; }
 .cal-total { font-size: 11px; font-weight: 700; text-align: right; color: var(--amber); font-variant-numeric: tabular-nums; }
 .linklike { background: none; border: none; color: var(--accent); padding: 0; font-size: 14px; cursor: pointer; }
 .linklike:hover { text-decoration: underline; filter: none; }

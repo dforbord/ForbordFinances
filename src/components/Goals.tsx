@@ -12,7 +12,7 @@ const COLORS = [
 const STATUS_META: Record<GoalStatus, { label: string; color: string }> = {
   reached: { label: "🎉 Reached", color: "#10b981" },
   ahead: { label: "Ahead of pace", color: "#10b981" },
-  "on-track": { label: "On track", color: "#3b82f6" },
+  "on-track": { label: "On pace", color: "#3b82f6" },
   behind: { label: "Behind pace", color: "#ef4444" },
   overdue: { label: "Past due", color: "#ef4444" },
 };
@@ -23,13 +23,21 @@ function monthsText(m: number): string {
   return `${m.toFixed(1)} months left`;
 }
 
+function etaText(stats: GoalStats): string {
+  if (!isFinite(stats.finishEtaMonths)) return "you'd never reach it at your current pace";
+  const diff = stats.finishEtaMonths - stats.monthsLeft; // + = late, - = early
+  if (Math.abs(diff) < 0.3) return "right on time";
+  const amt = Math.abs(diff);
+  const unit = amt < 1 ? `${Math.round(amt * 30.4375)} days` : `${amt.toFixed(1)} months`;
+  return diff > 0 ? `about ${unit} late` : `about ${unit} early`;
+}
+
 export function Goals() {
   const { state, dispatch } = useStore();
 
   const [name, setName] = useState("");
   const [amount, setAmount] = useState("");
   const [date, setDate] = useState("");
-  const [accountId, setAccountId] = useState("");
   const [startAmount, setStartAmount] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
 
@@ -45,7 +53,7 @@ export function Goals() {
         targetDate: date,
         startDate: todayKey(),
         startAmount: parseFloat(startAmount) || 0,
-        accountId: accountId || undefined,
+        contributions: [],
         color: COLORS[state.goals.length % COLORS.length],
       },
     });
@@ -53,7 +61,6 @@ export function Goals() {
     setAmount("");
     setDate("");
     setStartAmount("");
-    setAccountId("");
   }
 
   return (
@@ -61,7 +68,7 @@ export function Goals() {
       <div className="page-head">
         <div>
           <h1>Goals</h1>
-          <div className="subtle">Set a target and date — see whether you're on track</div>
+          <div className="subtle">Set a target and date, log what you save, see if you're on pace</div>
         </div>
       </div>
 
@@ -88,17 +95,6 @@ export function Goals() {
             <label>Target date</label>
             <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
           </div>
-          <div className="field type">
-            <label>Track via account</label>
-            <select value={accountId} onChange={(e) => setAccountId(e.target.value)}>
-              <option value="">— none —</option>
-              {state.accounts.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.name}
-                </option>
-              ))}
-            </select>
-          </div>
           <div className="field amt">
             <label>Already saved</label>
             <input
@@ -113,8 +109,9 @@ export function Goals() {
           </button>
         </div>
         <div className="help">
-          Link a <strong>savings account</strong> and progress tracks its balance automatically as
-          you log contributions. “Already saved” marks where the plan starts today.
+          “Already saved” is what you've put aside so far today. After that, use{" "}
+          <strong>Add amount</strong> on the goal to log money as you save it — that drives your
+          pace and projection.
         </div>
       </div>
 
@@ -138,7 +135,6 @@ export function Goals() {
                 key={g.id}
                 goal={g}
                 stats={computeGoal(state, g)}
-                accountName={state.accounts.find((a) => a.id === g.accountId)?.name}
                 onEdit={() => setEditingId(g.id)}
                 onDelete={() => {
                   if (confirm(`Delete goal “${g.name}”?`)) {
@@ -157,19 +153,36 @@ export function Goals() {
 function GoalCard({
   goal,
   stats,
-  accountName,
   onEdit,
   onDelete,
 }: {
   goal: Goal;
   stats: GoalStats;
-  accountName?: string;
   onEdit: () => void;
   onDelete: () => void;
 }) {
+  const { dispatch } = useStore();
   const meta = STATUS_META[stats.status];
   const savedPct = stats.fractionSaved * 100;
   const markerPct = stats.expectedFractionOfTarget * 100;
+
+  const [amt, setAmt] = useState("");
+  const [note, setNote] = useState("");
+  const [showLog, setShowLog] = useState(false);
+
+  function addContribution() {
+    const value = parseFloat(amt);
+    if (isNaN(value)) return;
+    dispatch({
+      type: "ADD_GOAL_CONTRIB",
+      goalId: goal.id,
+      contribution: { id: uid(), date: todayKey(), amount: value, note: note.trim() || undefined },
+    });
+    setAmt("");
+    setNote("");
+  }
+
+  const recent = [...(goal.contributions ?? [])].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 6);
 
   return (
     <div className="card goal-card" style={{ borderLeft: `4px solid ${goal.color}` }}>
@@ -178,13 +191,12 @@ function GoalCard({
           <h2 style={{ margin: 0 }}>{goal.name}</h2>
           <div className="subtle">
             {fmt(stats.saved)} of {fmt(stats.target)} ·{" "}
-            {new Date(parseDate(goal.targetDate)).toLocaleDateString("en-US", {
+            {parseDate(goal.targetDate).toLocaleDateString("en-US", {
               month: "short",
               day: "numeric",
               year: "numeric",
             })}{" "}
             · {monthsText(stats.monthsLeft)}
-            {accountName ? ` · ${accountName}` : ""}
           </div>
         </div>
         <span className="tag" style={{ background: meta.color + "22", color: meta.color }}>
@@ -192,7 +204,7 @@ function GoalCard({
         </span>
       </div>
 
-      <div className="goalbar" title={`Target pace marker at ${fmt(stats.expectedByNow)}`}>
+      <div className="goalbar" title={`Plan says you should be at ${fmt(stats.expectedByNow)}`}>
         <div className="goalbar-fill" style={{ width: `${savedPct}%`, background: goal.color }} />
         {stats.status !== "reached" && (
           <div className="goalbar-marker" style={{ left: `${markerPct}%` }} />
@@ -200,59 +212,124 @@ function GoalCard({
       </div>
       <div className="goalbar-legend subtle">
         <span>{savedPct.toFixed(0)}% saved</span>
-        <span>▮ marker = where the plan says you should be ({fmt(stats.expectedByNow)})</span>
+        <span>▮ marker = on-pace target now ({fmt(stats.expectedByNow)})</span>
       </div>
 
       <div className="goal-stats">
         <Stat label="Remaining" value={fmt(stats.remaining)} />
-        <Stat label="To stay on pace" value={`${fmt(stats.requiredMonthly)}/mo`} />
-        {stats.runRate > 0 && (
-          <Stat label="Your recent pace" value={`${fmt(stats.runRate)}/mo`} />
-        )}
+        <Stat label="To finish on time" value={`${fmt(stats.requiredMonthly)}/mo`} />
+        <Stat
+          label="Your pace"
+          value={stats.pace > 0 ? `${fmt(stats.pace)}/mo` : "—"}
+        />
       </div>
 
       <div className="goal-callout" style={{ background: meta.color + "16", color: meta.color }}>
         {stats.status === "reached" && <>Goal reached — nicely done.</>}
         {stats.status === "ahead" && (
           <>
-            You're <strong>{fmt(stats.aheadAmount)} ahead</strong> of schedule. Keep saving{" "}
-            {fmt(stats.requiredMonthly)}/mo and you'll arrive early.
+            You're <strong>{fmt(stats.aheadAmount)} ahead</strong> of where you'd need to be. Keep
+            this up and you'll arrive {etaText(stats)}.
           </>
         )}
         {stats.status === "on-track" && (
-          <>On track — keep saving about {fmt(stats.requiredMonthly)}/mo to land on time.</>
+          <>
+            On pace. Save about <strong>{fmt(stats.requiredMonthly)}/mo</strong> from here to land on
+            time.
+          </>
         )}
         {stats.status === "behind" && (
           <>
-            You're <strong>{fmt(stats.behindAmount)} behind</strong> pace. Save{" "}
-            <strong>{fmt(stats.catchUpNextMonth)}</strong> next month to get back on track (or{" "}
-            {fmt(stats.requiredMonthly)}/mo every month from here).
+            You're <strong>{fmt(stats.behindAmount)} behind</strong> pace. Add{" "}
+            <strong>{fmt(stats.catchUpNextMonth)}</strong> next month to catch up, then{" "}
+            {fmt(stats.requiredMonthly)}/mo to finish on time.
           </>
         )}
         {stats.status === "overdue" && (
-          <>
-            Target date has passed with {fmt(stats.remaining)} still to go. Pick a new date or add{" "}
-            {fmt(stats.remaining)}.
-          </>
+          <>Target date passed with {fmt(stats.remaining)} to go. Edit the date or add the rest.</>
         )}
       </div>
 
-      {stats.runRate > 0 && stats.status !== "reached" && (
+      {stats.pace > 0 && stats.status !== "reached" && (
         <div className="help">
-          At your recent pace you'll have about <strong>{fmt(stats.projectedFinal)}</strong> by the
-          deadline —{" "}
-          {stats.projectedDelta >= 0
-            ? `${fmt(stats.projectedDelta)} over goal.`
-            : `${fmt(-stats.projectedDelta)} short.`}
+          At your current pace (~{fmt(stats.pace)}/mo) you'll reach about{" "}
+          <strong>{fmt(stats.projectedFinal)}</strong> by the deadline —{" "}
+          {stats.projectedDelta >= 0 ? `${fmt(stats.projectedDelta)} over goal, ` : `${fmt(-stats.projectedDelta)} short, `}
+          finishing {etaText(stats)}.
+        </div>
+      )}
+
+      <div className="row-form" style={{ marginTop: 14, marginBottom: 0 }}>
+        <div className="field amt">
+          <label>Add amount</label>
+          <input
+            type="number"
+            placeholder="0.00"
+            value={amt}
+            onChange={(e) => setAmt(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && addContribution()}
+          />
+        </div>
+        <div className="field grow">
+          <label>Note (optional)</label>
+          <input
+            placeholder="e.g. Bonus, transfer"
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && addContribution()}
+          />
+        </div>
+        <button className="primary" onClick={addContribution}>
+          ＋ Add to goal
+        </button>
+      </div>
+
+      {recent.length > 0 && (
+        <div style={{ marginTop: 10 }}>
+          <button className="linklike" onClick={() => setShowLog((s) => !s)}>
+            {showLog ? "Hide" : "Show"} contributions ({(goal.contributions ?? []).length})
+          </button>
+          {showLog && (
+            <table className="table" style={{ marginTop: 8 }}>
+              <tbody>
+                {recent.map((c) => (
+                  <tr key={c.id}>
+                    <td style={{ width: 120 }}>
+                      {parseDate(c.date).toLocaleDateString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                      })}
+                    </td>
+                    <td>{c.note ?? ""}</td>
+                    <td className="num">{fmt(c.amount)}</td>
+                    <td className="actions">
+                      <button
+                        className="small danger"
+                        onClick={() =>
+                          dispatch({
+                            type: "DELETE_GOAL_CONTRIB",
+                            goalId: goal.id,
+                            contribId: c.id,
+                          })
+                        }
+                      >
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
       )}
 
       <div className="toolbar" style={{ marginTop: 12 }}>
         <button className="small" onClick={onEdit}>
-          Edit
+          Edit goal
         </button>
         <button className="small danger" onClick={onDelete}>
-          Delete
+          Delete goal
         </button>
       </div>
     </div>
@@ -277,12 +354,10 @@ function EditGoal({
   onSave: (g: Goal) => void;
   onCancel: () => void;
 }) {
-  const { state } = useStore();
   const [name, setName] = useState(goal.name);
   const [amount, setAmount] = useState(String(goal.targetAmount));
   const [date, setDate] = useState(goal.targetDate);
   const [startDate, setStartDate] = useState(goal.startDate);
-  const [accountId, setAccountId] = useState(goal.accountId ?? "");
   const [startAmount, setStartAmount] = useState(String(goal.startAmount));
 
   return (
@@ -304,17 +379,6 @@ function EditGoal({
           <label>Target date</label>
           <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
         </div>
-        <div className="field type">
-          <label>Track via account</label>
-          <select value={accountId} onChange={(e) => setAccountId(e.target.value)}>
-            <option value="">— none —</option>
-            {state.accounts.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.name}
-              </option>
-            ))}
-          </select>
-        </div>
         <div className="field amt">
           <label>Already saved</label>
           <input
@@ -334,7 +398,6 @@ function EditGoal({
               targetAmount: parseFloat(amount) || 0,
               targetDate: date,
               startDate,
-              accountId: accountId || undefined,
               startAmount: parseFloat(startAmount) || 0,
             })
           }

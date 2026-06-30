@@ -59,11 +59,14 @@ You can also grab a manual snapshot any time via **Backup → Export**.
 - **Dashboard** — income vs. expenses / taxes / savings + what's left to
   allocate, with planned-vs-actual bars per bucket.
 - **Monthly Entry** — log income and spending for any month (‹ › to switch).
-- **Goals** — set a target amount + date, link a savings account, and see whether
-  you're ahead / on track / behind vs a straight-line plan, how much to save next
-  month to catch up, how far ahead you are, and a projection from your recent pace.
+- **Goals** — set a target amount + date and log savings toward it manually with
+  *Add to goal*. Shows ahead / on pace / behind, how much to add next month to
+  catch up, how far ahead you are, and a projection + finish ETA from your pace.
+  The status starts as a simple on-pace check and shifts toward a trajectory
+  projection as months of contributions accumulate.
 - **Expense Calendar** — plan future one-off costs (travel, events) on a monthly
-  calendar; click a day to add items, with optional category + color.
+  calendar. Click a day to add an item, or block off a multi-day range for a
+  single expense; each entry is filed into a bucket you choose.
 - **Buckets** — create/edit/delete your own expense, tax, and savings categories.
 - **Savings** — accounts whose balances grow as you log contributions.
 - **Backup** — export/import your data; reset to defaults.

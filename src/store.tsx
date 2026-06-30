@@ -9,7 +9,16 @@ import {
   useState,
   ReactNode,
 } from "react";
-import { Account, AppState, Bucket, Goal, IncomeEntry, PlannedExpense, Txn } from "./types";
+import {
+  Account,
+  AppState,
+  Bucket,
+  Goal,
+  GoalContribution,
+  IncomeEntry,
+  PlannedExpense,
+  Txn,
+} from "./types";
 import { loadState, saveState, uid } from "./storage";
 import {
   forgetHandle,
@@ -39,6 +48,8 @@ type Action =
   | { type: "ADD_GOAL"; goal: Goal }
   | { type: "UPDATE_GOAL"; goal: Goal }
   | { type: "DELETE_GOAL"; id: string }
+  | { type: "ADD_GOAL_CONTRIB"; goalId: string; contribution: GoalContribution }
+  | { type: "DELETE_GOAL_CONTRIB"; goalId: string; contribId: string }
   | { type: "ADD_PLANNED"; planned: PlannedExpense }
   | { type: "UPDATE_PLANNED"; planned: PlannedExpense }
   | { type: "DELETE_PLANNED"; id: string };
@@ -155,6 +166,24 @@ function baseReducer(state: AppState, action: Action): AppState {
       };
     case "DELETE_GOAL":
       return { ...state, goals: state.goals.filter((g) => g.id !== action.id) };
+    case "ADD_GOAL_CONTRIB":
+      return {
+        ...state,
+        goals: state.goals.map((g) =>
+          g.id === action.goalId
+            ? { ...g, contributions: [...g.contributions, action.contribution] }
+            : g,
+        ),
+      };
+    case "DELETE_GOAL_CONTRIB":
+      return {
+        ...state,
+        goals: state.goals.map((g) =>
+          g.id === action.goalId
+            ? { ...g, contributions: g.contributions.filter((c) => c.id !== action.contribId) }
+            : g,
+        ),
+      };
 
     case "ADD_PLANNED":
       return { ...state, plannedExpenses: [...state.plannedExpenses, action.planned] };

@@ -36,6 +36,14 @@ export interface MonthData {
   txns: Txn[];
 }
 
+export interface GoalContribution {
+  id: string;
+  /** YYYY-MM-DD */
+  date: string;
+  amount: number;
+  note?: string;
+}
+
 export interface Goal {
   id: string;
   name: string;
@@ -46,19 +54,22 @@ export interface Goal {
   startDate: string;
   /** Amount already saved toward this goal at startDate. */
   startAmount: number;
-  /** Linked savings account; progress = its balance. Empty = manual/plan-only. */
-  accountId?: string;
+  /** Amounts added manually toward this goal. */
+  contributions: GoalContribution[];
   color: string;
 }
 
 export interface PlannedExpense {
   id: string;
-  /** YYYY-MM-DD */
+  /** Start day (YYYY-MM-DD). */
   date: string;
+  /** Optional end day for a multi-day block (YYYY-MM-DD). Single day if absent. */
+  endDate?: string;
   label: string;
   amount: number;
-  /** Optional category bucket. */
-  bucketId?: string;
+  /** Category bucket this expense is filed into. */
+  bucketId: string;
+  /** Display color (inherited from the bucket). */
   color: string;
 }
 
