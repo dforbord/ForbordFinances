@@ -13,9 +13,11 @@ function entryDate(month: string): string {
 export function MonthlyEntry({
   month,
   setMonth,
+  embedded,
 }: {
   month: string;
   setMonth: (m: string) => void;
+  embedded?: boolean;
 }) {
   const { state, dispatch } = useStore();
   const data = state.months[month] ?? { income: [], txns: [] };
@@ -70,13 +72,15 @@ export function MonthlyEntry({
 
   return (
     <>
-      <div className="page-head">
-        <div>
-          <h1>Monthly Entry</h1>
-          <div className="subtle">Log income and spending for this month</div>
+      {!embedded && (
+        <div className="page-head">
+          <div>
+            <h1>Monthly Entry</h1>
+            <div className="subtle">Log income and spending for this month</div>
+          </div>
+          <MonthSwitch month={month} setMonth={setMonth} />
         </div>
-        <MonthSwitch month={month} setMonth={setMonth} />
-      </div>
+      )}
 
       {/* INCOME */}
       <div className="section">

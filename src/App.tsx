@@ -2,28 +2,26 @@ import { useState } from "react";
 import { monthKey } from "./storage";
 import { useStore } from "./store";
 import { Dashboard } from "./components/Dashboard";
-import { MonthlyEntry } from "./components/MonthlyEntry";
+import { LogEntries } from "./components/LogEntries";
 import { Goals } from "./components/Goals";
 import { Calendar } from "./components/Calendar";
-import { Buckets } from "./components/Buckets";
 import { Savings } from "./components/Savings";
 import { Backup } from "./components/Backup";
 
-type Tab = "dashboard" | "monthly" | "goals" | "calendar" | "buckets" | "savings" | "backup";
+type Tab = "home" | "log" | "goals" | "savings" | "calendar" | "backup";
 
 const NAV: { id: Tab; label: string; icon: string }[] = [
-  { id: "dashboard", label: "Dashboard", icon: "📊" },
-  { id: "monthly", label: "Monthly Entry", icon: "🗓️" },
+  { id: "home", label: "Home", icon: "🏠" },
+  { id: "log", label: "Log Entries", icon: "📝" },
   { id: "goals", label: "Goals", icon: "🎯" },
-  { id: "calendar", label: "Expense Calendar", icon: "📅" },
-  { id: "buckets", label: "Buckets", icon: "🪣" },
   { id: "savings", label: "Savings", icon: "🏦" },
+  { id: "calendar", label: "Expense Calendar", icon: "📅" },
   { id: "backup", label: "Backup", icon: "💾" },
 ];
 
 export function App() {
   const { file } = useStore();
-  const [tab, setTab] = useState<Tab>("dashboard");
+  const [tab, setTab] = useState<Tab>("home");
   const [month, setMonth] = useState<string>(monthKey(new Date()));
 
   const showBanner =
@@ -69,12 +67,11 @@ export function App() {
             )}
           </div>
         )}
-        {tab === "dashboard" && <Dashboard month={month} setMonth={setMonth} />}
-        {tab === "monthly" && <MonthlyEntry month={month} setMonth={setMonth} />}
+        {tab === "home" && <Dashboard month={month} setMonth={setMonth} />}
+        {tab === "log" && <LogEntries month={month} setMonth={setMonth} />}
         {tab === "goals" && <Goals />}
-        {tab === "calendar" && <Calendar />}
-        {tab === "buckets" && <Buckets />}
         {tab === "savings" && <Savings />}
+        {tab === "calendar" && <Calendar />}
         {tab === "backup" && <Backup />}
       </main>
     </div>

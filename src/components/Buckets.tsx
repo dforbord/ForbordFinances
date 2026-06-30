@@ -22,7 +22,7 @@ const TYPE_COLORS: Record<BucketType, string> = {
   savings: "#10b981", // green
 };
 
-export function Buckets() {
+export function Buckets({ embedded }: { embedded?: boolean } = {}) {
   const { state, dispatch } = useStore();
 
   const [name, setName] = useState("");
@@ -50,12 +50,14 @@ export function Buckets() {
 
   return (
     <>
-      <div className="page-head">
-        <div>
-          <h1>Buckets</h1>
-          <div className="subtle">Your customizable expense, tax, and savings categories</div>
+      {!embedded && (
+        <div className="page-head">
+          <div>
+            <h1>Buckets</h1>
+            <div className="subtle">Your customizable expense, tax, and savings categories</div>
+          </div>
         </div>
-      </div>
+      )}
 
       <div className="card">
         <div className="row-form">

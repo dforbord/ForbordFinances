@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useStore } from "../store";
-import { fmt } from "../format";
+import { fmt, monthLabel } from "../format";
 import { BucketType } from "../types";
 import { computeGoal, weeklySeries, GoalStatus } from "../selectors";
 import { MonthSwitch } from "./MonthSwitch";
@@ -64,8 +64,8 @@ export function Dashboard({
     <>
       <div className="page-head">
         <div>
-          <h1>Dashboard</h1>
-          <div className="subtle">Where your money went this month</div>
+          <h1>Hello Dylan</h1>
+          <div className="subtle">Here is your financial dashboard for {monthLabel(month)}</div>
         </div>
         <MonthSwitch month={month} setMonth={setMonth} />
       </div>
