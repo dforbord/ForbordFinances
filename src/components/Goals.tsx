@@ -175,6 +175,13 @@ function GoalCard({
 
   const recent = [...(goal.contributions ?? [])].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 6);
 
+  const third =
+    stats.status === "ahead"
+      ? { label: "Ahead by", value: fmt(stats.aheadAmount) }
+      : stats.status === "behind" || stats.status === "overdue"
+        ? { label: "Behind by", value: fmt(stats.behindAmount) }
+        : { label: "Status", value: stats.status === "reached" ? "Reached 🎉" : "On pace" };
+
   return (
     <div className="card goal-card" style={{ borderLeft: `4px solid ${goal.color}` }}>
       <div className="goal-head">
@@ -209,10 +216,7 @@ function GoalCard({
       <div className="goal-stats">
         <Stat label="Remaining" value={fmt(stats.remaining)} />
         <Stat label="Save each month" value={`${fmt(stats.requiredMonthly)}/mo`} big />
-        <Stat
-          label={stats.delta >= 0 ? "Ahead by" : "Behind by"}
-          value={fmt(Math.abs(stats.delta))}
-        />
+        <Stat label={third.label} value={third.value} />
       </div>
 
       <div className="goal-callout" style={{ background: meta.color + "16", color: meta.color }}>

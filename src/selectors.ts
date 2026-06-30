@@ -1,5 +1,5 @@
 import { AppState, Goal } from "./types";
-import { clamp, daysBetween, parseDate } from "./format";
+import { clamp, parseDate } from "./format";
 
 const DAYS_PER_MONTH = 30.4375;
 
@@ -36,22 +36,25 @@ export function computeGoal(_state: AppState, goal: Goal, now: Date = new Date()
   const target = goal.targetAmount;
   const remaining = Math.max(0, target - saved);
 
-  const start = parseDate(goal.startDate);
-  const end = parseDate(goal.targetDate);
-  const totalDays = Math.max(1, daysBetween(start, end));
-  const elapsedDays = clamp(daysBetween(start, now), 0, totalDays);
-  const daysLeft = Math.max(0, daysBetween(now, end));
+  // Use continuous millisecond precision so the plan line advances smoothly
+  // instead of jumping a whole day's worth the moment the date ticks over.
+  const start = parseDate(goal.startDate).getTime();
+  const end = parseDate(goal.targetDate).getTime();
+  const nowMs = now.getTime();
+  const totalMs = Math.max(1, end - start);
+  const elapsedMs = clamp(nowMs - start, 0, totalMs);
+  const daysLeft = Math.max(0, (end - nowMs) / 86_400_000);
   const monthsLeft = daysLeft / DAYS_PER_MONTH;
-  const totalMonths = totalDays / DAYS_PER_MONTH;
+  const totalMonths = totalMs / 86_400_000 / DAYS_PER_MONTH;
 
   // Even, on-time plan line — used only to say how far ahead/behind you are.
-  const frac = elapsedDays / totalDays;
+  const frac = elapsedMs / totalMs;
   const expectedByNow = goal.startAmount + (target - goal.startAmount) * frac;
   const delta = saved - expectedByNow;
   const tol = Math.max(50, target * 0.02);
 
   const reached = saved >= target;
-  const overdue = !reached && now >= end;
+  const overdue = !reached && nowMs >= end;
   let status: GoalStatus;
   if (reached) status = "reached";
   else if (overdue) status = "overdue";
