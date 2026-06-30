@@ -50,12 +50,18 @@ export function computeGoal(_state: AppState, goal: Goal, now: Date = new Date()
   const monthsElapsed = clamp(monthsDiff(start, now), 0, totalMonths);
   const monthsThroughThisMonth = Math.min(monthsElapsed + 1, totalMonths);
 
-  // Plan checkpoints (depend only on the plan, never on actual saving).
-  const startOfMonthTarget = goal.startAmount + monthsElapsed * standardMonthly;
+  // The end-of-current-month checkpoint (the bar marker), plan-only.
   const monthlyTarget = goal.startAmount + monthsThroughThisMonth * standardMonthly;
-
-  const delta = saved - startOfMonthTarget; // + ahead / − behind vs. start of month
   const saveThisMonth = Math.max(0, monthlyTarget - saved); // standard + carried shortfall
+
+  // Ahead/behind reflects only money from COMPLETED months — saving you do
+  // during the current month counts toward "save this month", not toward being
+  // ahead. So we compare contributions made before this month against the plan.
+  const firstOfThisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  const priorContrib = (goal.contributions ?? [])
+    .filter((c) => parseDate(c.date) < firstOfThisMonth)
+    .reduce((s, c) => s + c.amount, 0);
+  const delta = priorContrib - monthsElapsed * standardMonthly; // + ahead / − behind
   const tol = Math.max(50, target * 0.02);
 
   const reached = saved >= target;
