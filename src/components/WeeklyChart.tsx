@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from "react";
 import { fmtShort } from "../format";
 
 interface Point {
@@ -14,9 +15,22 @@ export function WeeklyChart({
   color: string;
   points: Point[];
 }) {
-  const W = 480;
+  // Render at the card's real pixel width (1:1) so nothing stretches — the
+  // points simply spread out to fill a wider card, dots stay round.
+  const svgRef = useRef<SVGSVGElement>(null);
+  const [W, setW] = useState(600);
+  useEffect(() => {
+    const el = svgRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver((entries) => {
+      setW(Math.max(220, entries[0].contentRect.width));
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
   const H = 150;
-  const padX = 12;
+  const padX = 14;
   const padTop = 16;
   const padBottom = 24;
   const n = points.length;
@@ -36,7 +50,7 @@ export function WeeklyChart({
   const latest = points[n - 1]?.value ?? 0;
   const prev = points[n - 2]?.value ?? 0;
   const delta = latest - prev;
-  const gid = `grad-${title.replace(/\s/g, "")}`;
+  const gid = `grad-${title.replace(/\W/g, "")}`;
 
   return (
     <div className="card chart-card">
@@ -52,7 +66,7 @@ export function WeeklyChart({
           )}
         </span>
       </div>
-      <svg viewBox={`0 0 ${W} ${H}`} className="chart-svg" preserveAspectRatio="none">
+      <svg ref={svgRef} viewBox={`0 0 ${W} ${H}`} width="100%" height={H} className="chart-svg">
         <defs>
           <linearGradient id={gid} x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor={color} stopOpacity="0.35" />
@@ -65,19 +79,13 @@ export function WeeklyChart({
         <polygon points={areaPts} fill={`url(#${gid})`} />
         <polyline points={linePts} fill="none" stroke={color} strokeWidth="2" />
         {points.map((p, i) => (
-          <circle
-            key={i}
-            cx={x(i)}
-            cy={y(p.value)}
-            r={i === n - 1 ? 3.5 : 2}
-            fill={color}
-          >
+          <circle key={i} cx={x(i)} cy={y(p.value)} r={i === n - 1 ? 4 : 2.5} fill={color}>
             <title>{`Week of ${p.label}: ${fmtShort(p.value)}`}</title>
           </circle>
         ))}
         {points.map((p, i) =>
           i % 2 === 0 || i === n - 1 ? (
-            <text key={`l${i}`} x={x(i)} y={H - 6} className="chart-xlabel" textAnchor="middle">
+            <text key={`l${i}`} x={x(i)} y={H - 7} className="chart-xlabel" textAnchor="middle">
               {p.label}
             </text>
           ) : null,
