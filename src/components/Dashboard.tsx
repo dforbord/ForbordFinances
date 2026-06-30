@@ -15,6 +15,20 @@ const TYPE_LABEL: Record<BucketType, string> = {
 const GREEN = "#10b981";
 const ORANGE = "#f97316";
 
+// Known household accounts → preferred first name.
+const NAME_BY_EMAIL: Record<string, string> = {
+  "dkforbord@gmail.com": "Dylan",
+  "isabellasmith011@gmail.com": "Isabella",
+};
+
+function greetingName(user: { email: string | null; name: string | null } | null): string {
+  if (!user) return "Dylan";
+  if (user.email && NAME_BY_EMAIL[user.email]) return NAME_BY_EMAIL[user.email];
+  if (user.name) return user.name.split(/\s+/)[0];
+  if (user.email) return user.email.split("@")[0];
+  return "there";
+}
+
 const STATUS_COLOR: Record<GoalStatus, string> = {
   reached: "#10b981",
   ahead: "#10b981",
@@ -37,7 +51,7 @@ export function Dashboard({
   month: string;
   setMonth: (m: string) => void;
 }) {
-  const { state } = useStore();
+  const { state, cloud } = useStore();
   const data = state.months[month] ?? { income: [], txns: [] };
 
   const totals = useMemo(() => {
@@ -64,7 +78,7 @@ export function Dashboard({
     <>
       <div className="page-head">
         <div>
-          <h1>Hello Dylan</h1>
+          <h1>Hello {greetingName(cloud.user)}</h1>
           <div className="subtle">Here is your financial dashboard for {monthLabel(month)}</div>
         </div>
         <MonthSwitch month={month} setMonth={setMonth} />
