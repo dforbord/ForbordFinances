@@ -2,6 +2,10 @@ import { AppState, Goal } from "./types";
 import { clamp, daysBetween, parseDate } from "./format";
 
 const DAYS_PER_MONTH = 30.4375;
+// Recent-pace window. Wide (~4 months) so lumpy or quarterly saving — e.g. a
+// bonus every few months — doesn't read as "behind" just because last month
+// happened to be quiet. Bump this up further to smooth even more.
+const RECENT_WINDOW_DAYS = 120;
 
 export type GoalStatus = "reached" | "ahead" | "on-track" | "behind" | "overdue";
 
@@ -60,14 +64,17 @@ export function computeGoal(_state: AppState, goal: Goal, now: Date = new Date()
   const sinceStart = contribs
     .filter((c) => c.date >= startKey)
     .reduce((s, c) => s + c.amount, 0);
-  const recentCutoff = new Date(now.getTime() - 60 * 86_400_000);
+  const recentCutoff = new Date(now.getTime() - RECENT_WINDOW_DAYS * 86_400_000);
   const recentContrib = contribs
     .filter((c) => parseDate(c.date) >= recentCutoff)
     .reduce((s, c) => s + c.amount, 0);
 
   const overallPace = sinceStart / Math.max(monthsElapsed, 0.5);
-  const recentPace = recentContrib / 2;
-  const pace = monthsElapsed < 1 ? overallPace : 0.6 * recentPace + 0.4 * overallPace;
+  // Divide by the window, but never by more time than has actually elapsed, so
+  // a young goal isn't understated by the wide window.
+  const recentMonths = Math.min(RECENT_WINDOW_DAYS / DAYS_PER_MONTH, Math.max(monthsElapsed, 0.5));
+  const recentPace = recentContrib / recentMonths;
+  const pace = 0.6 * recentPace + 0.4 * overallPace;
 
   const requiredMonthly = monthsLeft > 0 ? remaining / monthsLeft : remaining;
   const projectedFinal = saved + pace * monthsLeft;
