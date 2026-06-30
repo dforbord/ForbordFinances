@@ -13,15 +13,15 @@
 // ─────────────────────────────────────────────────────────────────────────
 
 export const firebaseConfig = {
-  apiKey: "",
-  authDomain: "",
-  projectId: "",
-  appId: "",
+  apiKey: "AIzaSyCgw-GfKkg1znzmqrhsjSe3538N5zmhXBM",
+  authDomain: "forbord-financials.firebaseapp.com",
+  projectId: "forbord-financials",
+  appId: "1:588446050632:web:015481be5ad52e899fab7d",
 };
 
 // The Google accounts allowed to open the shared budget. Put the SAME two
 // emails in your Firestore security rules (see SETUP-SYNC.md).
 export const ALLOWED_EMAILS: string[] = [
-  // "you@gmail.com",
-  // "wife@gmail.com",
+  "dkforbord@gmail.com",
+  "isabellasmith011@gmail.com",
 ];
