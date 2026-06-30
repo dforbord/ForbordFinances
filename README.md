@@ -26,13 +26,18 @@ npm run dev
 
 Three layers, strongest first:
 
+Everything lives under **`~/Desktop/ForbordFinances/`**:
+`Sync_ForbordFinances/` holds the live file, `NightlySync_ForbordFinance/` holds
+the dated backups.
+
 1. **Auto-save to a real file (recommended).** In the **Backup** tab, click
-   *Create / choose data file* and save it as **`~/Documents/Sync_ForbordFinances/budget.json`**.
+   *Create / choose data file* and save it as
+   **`~/Desktop/ForbordFinances/Sync_ForbordFinances/budget.json`**.
    From then on, every edit writes to that file automatically. This needs
    **Chrome or Edge** (Safari/Firefox can't do it), and you click once per launch
    to re-grant access. `Budget.command` opens Chrome for this reason.
-2. **Nightly backup.** A macOS background job copies `~/Documents/Sync_ForbordFinances/budget.json`
-   into **`~/Downloads/NightlySync_ForbordFinance/`** as
+2. **Nightly backup.** A macOS background job copies that `budget.json`
+   into **`~/Desktop/ForbordFinances/NightlySync_ForbordFinance/`** as
    `ForbordFinance-YYYY-MM-DD.json` — but **only when the data changed** since the
    last backup (content compare, so untouched days produce nothing).
    - **Runs** nightly at **11:45 PM**, and also at **login/wake** so a night the
@@ -41,7 +46,7 @@ Three layers, strongest first:
      backup of each earlier month**, forever; older dailies are pruned.
    - Install/remove with the double-click scripts in `scripts/`:
      `install-nightly-sync.command` and `uninstall-nightly-sync.command`.
-   - Activity log: `~/Downloads/NightlySync_ForbordFinance/.sync.log`.
+   - Activity log: `~/Desktop/ForbordFinances/NightlySync_ForbordFinance/.sync.log`.
 3. **Browser localStorage** (always on). Instant-load cache at the pinned origin
    `http://localhost:5180`, so the app works offline and loads fast even before
    you reconnect the file. Tied to one browser on this Mac; clearing site data

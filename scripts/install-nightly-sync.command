@@ -5,8 +5,8 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 SYNC_SCRIPT="$SCRIPT_DIR/nightly-sync.sh"
-LIVE_DIR="$HOME/Documents/Sync_ForbordFinances"
-BACKUP_DIR="$HOME/Downloads/NightlySync_ForbordFinance"
+LIVE_DIR="$HOME/Desktop/ForbordFinances/Sync_ForbordFinances"
+BACKUP_DIR="$HOME/Desktop/ForbordFinances/NightlySync_ForbordFinance"
 LABEL="com.forbord.budget.nightlysync"
 PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
 

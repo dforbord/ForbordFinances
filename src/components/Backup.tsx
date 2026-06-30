@@ -27,8 +27,8 @@ function FileSyncPanel() {
       <p className="subtle">
         Connect a <code>budget.json</code> file and every change writes to it automatically — so
         your data isn't trapped in this browser. Your file lives at{" "}
-        <code>~/Documents/Sync_ForbordFinances/budget.json</code> (the nightly backup reads from
-        there).
+        <code>~/Desktop/ForbordFinances/Sync_ForbordFinances/budget.json</code> (the nightly backup
+        reads from there).
       </p>
 
       {!file.supported ? (
@@ -70,9 +70,9 @@ function FileSyncPanel() {
             )}
           </div>
           <div className="help">
-            Tip: keep this file in <code>Documents/Sync_ForbordFinances</code> as{" "}
-            <code>budget.json</code> so the nightly backup can find it. You'll click to re-grant
-            access once per launch.
+            Tip: keep this file in{" "}
+            <code>Desktop/ForbordFinances/Sync_ForbordFinances</code> as <code>budget.json</code> so
+            the nightly backup can find it. You'll click to re-grant access once per launch.
           </div>
         </>
       )}

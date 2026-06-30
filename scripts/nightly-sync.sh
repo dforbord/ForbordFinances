@@ -11,9 +11,9 @@
 #   - and at login/wake (RunAtLoad), to catch nights the Mac was off.
 # Written for macOS /bin/bash 3.2 (no associative arrays).
 
-# Live file location (where the app auto-saves). Change this if you move it.
-SRC="$HOME/Documents/Sync_ForbordFinances/budget.json"
-BACKUP_DIR="$HOME/Downloads/NightlySync_ForbordFinance"
+# Live file + backup folder, both under ~/Desktop/ForbordFinances.
+SRC="$HOME/Desktop/ForbordFinances/Sync_ForbordFinances/budget.json"
+BACKUP_DIR="$HOME/Desktop/ForbordFinances/NightlySync_ForbordFinance"
 PREFIX="ForbordFinance"
 KEEP_DAYS=7
 
