@@ -58,6 +58,7 @@ export async function readFile(handle: FileHandle): Promise<AppState | null> {
     months: parsed.months ?? {},
     goals: Array.isArray(parsed.goals) ? parsed.goals : [],
     plannedExpenses: Array.isArray(parsed.plannedExpenses) ? parsed.plannedExpenses : [],
+    categoryRules: Array.isArray(parsed.categoryRules) ? parsed.categoryRules : [],
     lastModified: parsed.lastModified ?? 0,
   };
 }

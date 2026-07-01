@@ -13,12 +13,19 @@ import {
   Account,
   AppState,
   Bucket,
+  CategoryRule,
   Goal,
   GoalContribution,
   IncomeEntry,
   PlannedExpense,
   Txn,
 } from "./types";
+
+export interface ImportItem {
+  month: string;
+  income?: IncomeEntry;
+  txn?: Txn;
+}
 import { loadState, saveState, uid } from "./storage";
 import {
   forgetHandle,
@@ -62,7 +69,8 @@ type Action =
   | { type: "DELETE_GOAL_CONTRIB"; goalId: string; contribId: string }
   | { type: "ADD_PLANNED"; planned: PlannedExpense }
   | { type: "UPDATE_PLANNED"; planned: PlannedExpense }
-  | { type: "DELETE_PLANNED"; id: string };
+  | { type: "DELETE_PLANNED"; id: string }
+  | { type: "IMPORT_BATCH"; items: ImportItem[]; rules: CategoryRule[] };
 
 function ensureMonth(state: AppState, month: string): AppState {
   if (state.months[month]) return state;
@@ -210,6 +218,20 @@ function baseReducer(state: AppState, action: Action): AppState {
         plannedExpenses: state.plannedExpenses.filter((p) => p.id !== action.id),
       };
 
+    case "IMPORT_BATCH": {
+      const months = { ...state.months };
+      for (const it of action.items) {
+        const m = months[it.month] ?? { income: [], txns: [] };
+        months[it.month] = {
+          income: it.income ? [...m.income, it.income] : m.income,
+          txns: it.txn ? [...m.txns, it.txn] : m.txns,
+        };
+      }
+      const ruleMap = new Map(state.categoryRules.map((r) => [r.keyword, r]));
+      for (const r of action.rules) ruleMap.set(r.keyword, r);
+      return { ...state, months, categoryRules: [...ruleMap.values()] };
+    }
+
     default:
       return state;
   }
@@ -233,6 +255,7 @@ function coerce(raw: AppState): AppState {
     months: raw.months ?? {},
     goals: Array.isArray(raw.goals) ? raw.goals : [],
     plannedExpenses: Array.isArray(raw.plannedExpenses) ? raw.plannedExpenses : [],
+    categoryRules: Array.isArray(raw.categoryRules) ? raw.categoryRules : [],
     lastModified: raw.lastModified ?? 0,
   };
 }

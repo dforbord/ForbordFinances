@@ -1,5 +1,6 @@
 import { MonthlyEntry } from "./MonthlyEntry";
 import { Buckets } from "./Buckets";
+import { ImportPanel } from "./ImportPanel";
 import { MonthSwitch } from "./MonthSwitch";
 
 export function LogEntries({
@@ -18,6 +19,8 @@ export function LogEntries({
         </div>
         <MonthSwitch month={month} setMonth={setMonth} />
       </div>
+
+      <ImportPanel />
 
       <MonthlyEntry month={month} setMonth={setMonth} embedded />
 

@@ -67,7 +67,10 @@ it's free on Firebase's tier. Until you paste your keys into
   allocate; two weekly trend charts (net income and spending, last 8 weeks, the
   current week a running total); a quick Goals widget; and click-to-expand
   planned-vs-actual breakdowns per bucket type.
-- **Monthly Entry** — log income and spending for any month (‹ › to switch).
+- **Log Entries** — an *Import from bank* drop zone (CSV / OFX / QFX from Chase,
+  Wells Fargo, Schwab): spending is auto-sorted into your buckets (and it learns
+  your categories), deposits become income, duplicates are skipped. Below it,
+  manual income/expense entry and your buckets.
 - **Goals** — set a target amount + date and log savings manually with *Add to
   goal*. Monthly model:
   - **Monthly goal** (fixed) = (target − already-saved) ÷ months in the plan.

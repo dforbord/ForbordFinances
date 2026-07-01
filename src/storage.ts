@@ -34,6 +34,7 @@ export function defaultState(): AppState {
     months: {},
     goals: [],
     plannedExpenses: [],
+    categoryRules: [],
     lastModified: Date.now(),
   };
 }
@@ -53,6 +54,7 @@ export function loadState(): AppState {
       months: parsed.months ?? {},
       goals: parsed.goals ?? [],
       plannedExpenses: parsed.plannedExpenses ?? [],
+      categoryRules: parsed.categoryRules ?? [],
       lastModified: parsed.lastModified ?? 0,
     };
   } catch {
@@ -90,6 +92,7 @@ export function parseImported(text: string): AppState {
     months: parsed.months ?? {},
     goals: parsed.goals ?? [],
     plannedExpenses: parsed.plannedExpenses ?? [],
+    categoryRules: parsed.categoryRules ?? [],
     lastModified: parsed.lastModified ?? 0,
   };
 }

@@ -22,6 +22,8 @@ export interface IncomeEntry {
   amount: number;
   /** YYYY-MM-DD the entry was logged — powers the weekly charts. */
   date?: string;
+  /** Fingerprint of an imported bank transaction, for de-duplication. */
+  importKey?: string;
 }
 
 export interface Txn {
@@ -33,6 +35,14 @@ export interface Txn {
   accountId?: string;
   /** YYYY-MM-DD the entry was logged — powers the weekly charts. */
   date?: string;
+  /** Fingerprint of an imported bank transaction, for de-duplication. */
+  importKey?: string;
+}
+
+/** Learned rule: a normalized description substring → which bucket to file it in. */
+export interface CategoryRule {
+  keyword: string;
+  bucketId: string;
 }
 
 export interface MonthData {
@@ -84,6 +94,8 @@ export interface AppState {
   months: Record<string, MonthData>;
   goals: Goal[];
   plannedExpenses: PlannedExpense[];
+  /** Learned import categorizations (description → bucket). */
+  categoryRules: CategoryRule[];
   /** Epoch ms of the last edit. Used for last-write-wins when syncing devices. */
   lastModified: number;
 }
