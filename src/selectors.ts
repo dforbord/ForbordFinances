@@ -74,6 +74,68 @@ export function weeklySeries(state: AppState, weeks = 8, now: Date = new Date())
   return points;
 }
 
+export interface MonthPoint {
+  /** "YYYY-MM" key. */
+  monthKey: string;
+  /** Short axis label — the oldest point carries the year ("Feb 2026"), the rest just "Mar". */
+  label: string;
+  /** Full label for tooltips ("June 2026"). */
+  fullLabel: string;
+  income: number;
+  /** Everything spent — expense + tax buckets (savings is its own series). */
+  spending: number;
+  savings: number;
+  /** The live, still-accumulating month: its dot keeps moving as statements are uploaded. */
+  isCurrent: boolean;
+}
+
+const MONTH_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+/**
+ * Per-month totals for the last `months` calendar months (oldest → newest, current last).
+ *
+ * Each month sums whatever is filed under `state.months["YYYY-MM"]`, so a *past* month is
+ * fixed once its statements stop landing, while the *current* month is a running total that
+ * grows every time a new statement is imported. This is the monthly analog of
+ * {@link weeklySeries} and drives the dashboard income / spending / savings charts.
+ */
+export function monthlySeries(state: AppState, months = 5, now: Date = new Date()): MonthPoint[] {
+  const typeById = new Map(state.buckets.map((b) => [b.id, b.type]));
+  const currentKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+
+  const points: MonthPoint[] = [];
+  for (let i = months - 1; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    const md = state.months[key];
+
+    let income = 0;
+    let spending = 0;
+    let savings = 0;
+    if (md) {
+      for (const inc of md.income) income += inc.amount;
+      for (const t of md.txns) {
+        const type = typeById.get(t.bucketId);
+        if (type === "savings") savings += t.amount;
+        else if (type === "expense" || type === "tax") spending += t.amount;
+      }
+    }
+
+    const short = MONTH_SHORT[d.getMonth()];
+    points.push({
+      monthKey: key,
+      // Oldest point (i === months-1) anchors the axis with a year; the rest stay terse.
+      label: i === months - 1 ? `${short} ${d.getFullYear()}` : short,
+      fullLabel: `${short} ${d.getFullYear()}`,
+      income,
+      spending,
+      savings,
+      isCurrent: key === currentKey,
+    });
+  }
+  return points;
+}
+
 export function goalSaved(goal: Goal): number {
   return goal.startAmount + (goal.contributions ?? []).reduce((s, c) => s + c.amount, 0);
 }

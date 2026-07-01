@@ -2,9 +2,9 @@ import { useMemo, useState } from "react";
 import { useStore } from "../store";
 import { fmt, monthLabel } from "../format";
 import { BucketType } from "../types";
-import { computeGoal, weeklySeries, GoalStatus } from "../selectors";
+import { computeGoal, monthlySeries, GoalStatus } from "../selectors";
 import { MonthSwitch } from "./MonthSwitch";
-import { WeeklyChart } from "./WeeklyChart";
+import { MonthlyChart } from "./MonthlyChart";
 
 const TYPE_LABEL: Record<BucketType, string> = {
   expense: "Expenses",
@@ -14,6 +14,7 @@ const TYPE_LABEL: Record<BucketType, string> = {
 
 const GREEN = "#10b981";
 const ORANGE = "#f97316";
+const BLUE = "#3b82f6";
 
 // Known household accounts → preferred first name.
 const NAME_BY_EMAIL: Record<string, string> = {
@@ -68,9 +69,18 @@ export function Dashboard({
     return { income, byBucket, byType, leftover: income - spent };
   }, [data, state.buckets]);
 
-  const weeks = useMemo(() => weeklySeries(state, 8), [state]);
-  const netPoints = weeks.map((w) => ({ label: w.label, value: w.net }));
-  const expPoints = weeks.map((w) => ({ label: w.label, value: w.expenses }));
+  // Last 5 calendar months (the 4 completed + the current running one).
+  const months = useMemo(() => monthlySeries(state, 5), [state]);
+  const toPoints = (pick: (m: (typeof months)[number]) => number) =>
+    months.map((m) => ({
+      label: m.label,
+      fullLabel: m.fullLabel,
+      value: pick(m),
+      isCurrent: m.isCurrent,
+    }));
+  const incomePoints = toPoints((m) => m.income);
+  const spendPoints = toPoints((m) => m.spending);
+  const savingsPoints = toPoints((m) => m.savings);
 
   const groups: BucketType[] = ["expense", "tax", "savings"];
 
@@ -109,12 +119,13 @@ export function Dashboard({
         </div>
       </div>
 
-      {/* Weekly trend charts */}
+      {/* Monthly trend charts — the current month is a live running total; past months settle. */}
       <div className="section">
-        <h2>Weekly trends <span className="subtle" style={{ fontWeight: 400 }}>· last 8 weeks</span></h2>
-        <div className="chart-row">
-          <WeeklyChart title="Net income / week" color={GREEN} points={netPoints} />
-          <WeeklyChart title="Spending / week" color={ORANGE} points={expPoints} />
+        <h2>Monthly trends <span className="subtle" style={{ fontWeight: 400 }}>· last 5 months</span></h2>
+        <div className="chart-row chart-row-3">
+          <MonthlyChart title="Income / month" color={GREEN} points={incomePoints} />
+          <MonthlyChart title="Spending / month" color={ORANGE} points={spendPoints} />
+          <MonthlyChart title="Savings / month" color={BLUE} points={savingsPoints} />
         </div>
       </div>
 

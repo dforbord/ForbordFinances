@@ -235,8 +235,19 @@ input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: -1
 .chart-latest { font-size: 20px; font-weight: 700; }
 .chart-delta { font-size: 12px; font-weight: 500; }
 .chart-svg { width: 100%; height: 150px; display: block; }
+.chart-svg-tall { height: 172px; }
 .chart-zero { stroke: var(--border); stroke-width: 1; stroke-dasharray: 3 3; }
 .chart-xlabel { fill: var(--muted); font-size: 9px; }
+
+/* Monthly charts — a printed value above every month + a pulsing "live" dot for the
+   current, still-accumulating month. */
+.chart-row-3 { grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); }
+.chart-vallabel { font-size: 11px; font-weight: 700; }
+.chart-dot-live { animation: chart-live-pulse 1.8s ease-in-out infinite; }
+@keyframes chart-live-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
 
 /* Quick goals widget */
 .goal-widget-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
