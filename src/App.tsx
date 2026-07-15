@@ -39,8 +39,13 @@ export function App() {
     return <SignIn />;
   }
 
+  // When cloud sync is on for a signed-in user, Firestore already persists every
+  // edit across devices — so don't nag about setting up a redundant local file.
+  const cloudHandlingSync = cloud.configured && !!cloud.user;
   const showBanner =
-    file.supported && (file.status === "disconnected" || file.status === "needs-permission");
+    file.supported &&
+    !cloudHandlingSync &&
+    (file.status === "disconnected" || file.status === "needs-permission");
 
   return (
     <div className="app">
