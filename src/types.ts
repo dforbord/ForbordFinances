@@ -87,6 +87,15 @@ export interface PlannedExpense {
   color: string;
 }
 
+/** A logged business expense — tracked separately from the household budget. */
+export interface BusinessExpense {
+  id: string;
+  name: string;
+  amount: number;
+  /** YYYY-MM the expense was charged. */
+  month: string;
+}
+
 export interface AppState {
   version: number;
   buckets: Bucket[];
@@ -94,6 +103,8 @@ export interface AppState {
   months: Record<string, MonthData>;
   goals: Goal[];
   plannedExpenses: PlannedExpense[];
+  /** Business expenses, kept apart from personal buckets/months. */
+  businessExpenses: BusinessExpense[];
   /** Learned import categorizations (description → bucket). */
   categoryRules: CategoryRule[];
   /** Epoch ms of the last edit. Used for last-write-wins when syncing devices. */
