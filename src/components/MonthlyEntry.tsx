@@ -3,7 +3,7 @@ import { useStore, uid } from "../store";
 import { monthKey } from "../storage";
 import { fmt, todayKey } from "../format";
 import { MonthSwitch } from "./MonthSwitch";
-import { BucketType } from "../types";
+import { Bucket, BucketType, IncomeEntry, Txn } from "../types";
 
 // Order + friendly labels for grouping the bucket dropdown by type.
 const BUCKET_GROUPS: { type: BucketType; label: string }[] = [
@@ -40,6 +40,10 @@ export function MonthlyEntry({
   const [txnLabel, setTxnLabel] = useState("");
   const [txnAmt, setTxnAmt] = useState("");
   const [txnAccount, setTxnAccount] = useState("");
+
+  // Which logged row is currently being edited in place.
+  const [editIncomeId, setEditIncomeId] = useState<string | null>(null);
+  const [editTxnId, setEditTxnId] = useState<string | null>(null);
 
   const selectedBucket = state.buckets.find((b) => b.id === txnBucket);
   const isSavings = selectedBucket?.type === "savings";
@@ -124,20 +128,32 @@ export function MonthlyEntry({
           ) : (
             <table className="table">
               <tbody>
-                {data.income.map((i) => (
-                  <tr key={i.id}>
-                    <td>{i.label}</td>
-                    <td className="num">{fmt(i.amount)}</td>
-                    <td className="actions">
-                      <button
-                        className="danger small"
-                        onClick={() => dispatch({ type: "DELETE_INCOME", month, id: i.id })}
-                      >
-                        Delete
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                {data.income.map((i) =>
+                  editIncomeId === i.id ? (
+                    <IncomeEditRow
+                      key={i.id}
+                      entry={i}
+                      month={month}
+                      onDone={() => setEditIncomeId(null)}
+                    />
+                  ) : (
+                    <tr key={i.id}>
+                      <td>{i.label}</td>
+                      <td className="num">{fmt(i.amount)}</td>
+                      <td className="actions">
+                        <button className="small" onClick={() => setEditIncomeId(i.id)}>
+                          Edit
+                        </button>{" "}
+                        <button
+                          className="danger small"
+                          onClick={() => dispatch({ type: "DELETE_INCOME", month, id: i.id })}
+                        >
+                          Delete
+                        </button>
+                      </td>
+                    </tr>
+                  ),
+                )}
                 <tr className="total-row">
                   <td>Total income</td>
                   <td className="num">{fmt(incomeTotal)}</td>
@@ -232,7 +248,15 @@ export function MonthlyEntry({
                   <tbody>
                     {data.txns.map((t) => {
                       const b = state.buckets.find((x) => x.id === t.bucketId);
-                      return (
+                      return editTxnId === t.id ? (
+                        <TxnEditRow
+                          key={t.id}
+                          txn={t}
+                          month={month}
+                          buckets={state.buckets}
+                          onDone={() => setEditTxnId(null)}
+                        />
+                      ) : (
                         <tr key={t.id}>
                           <td>
                             <span
@@ -244,6 +268,9 @@ export function MonthlyEntry({
                           <td>{t.label}</td>
                           <td className="num">{fmt(t.amount)}</td>
                           <td className="actions">
+                            <button className="small" onClick={() => setEditTxnId(t.id)}>
+                              Edit
+                            </button>{" "}
                             <button
                               className="danger small"
                               onClick={() => dispatch({ type: "DELETE_TXN", month, id: t.id })}
@@ -268,5 +295,131 @@ export function MonthlyEntry({
         </div>
       </div>
     </>
+  );
+}
+
+function IncomeEditRow({
+  entry,
+  month,
+  onDone,
+}: {
+  entry: IncomeEntry;
+  month: string;
+  onDone: () => void;
+}) {
+  const { dispatch } = useStore();
+  const [label, setLabel] = useState(entry.label);
+  const [amt, setAmt] = useState(String(entry.amount));
+
+  function save() {
+    const amount = parseFloat(amt);
+    dispatch({
+      type: "UPDATE_INCOME",
+      month,
+      entry: { ...entry, label: label.trim() || entry.label, amount: isNaN(amount) ? entry.amount : amount },
+    });
+    onDone();
+  }
+
+  return (
+    <tr>
+      <td>
+        <input value={label} onChange={(e) => setLabel(e.target.value)} onKeyDown={(e) => e.key === "Enter" && save()} />
+      </td>
+      <td className="num">
+        <input
+          type="number"
+          value={amt}
+          onChange={(e) => setAmt(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && save()}
+          style={{ width: 110 }}
+        />
+      </td>
+      <td className="actions">
+        <button className="primary small" onClick={save}>
+          Save
+        </button>{" "}
+        <button className="small ghost" onClick={onDone}>
+          Cancel
+        </button>
+      </td>
+    </tr>
+  );
+}
+
+function TxnEditRow({
+  txn,
+  month,
+  buckets,
+  onDone,
+}: {
+  txn: Txn;
+  month: string;
+  buckets: Bucket[];
+  onDone: () => void;
+}) {
+  const { dispatch } = useStore();
+  const [bucketId, setBucketId] = useState(txn.bucketId);
+  const [label, setLabel] = useState(txn.label);
+  const [amt, setAmt] = useState(String(txn.amount));
+
+  const isSavings = buckets.find((b) => b.id === bucketId)?.type === "savings";
+
+  function save() {
+    const amount = parseFloat(amt);
+    dispatch({
+      type: "UPDATE_TXN",
+      month,
+      txn: {
+        ...txn,
+        bucketId,
+        label: label.trim(),
+        amount: isNaN(amount) ? txn.amount : amount,
+        // Keep the savings account only while the bucket is still a savings bucket.
+        accountId: isSavings ? txn.accountId : undefined,
+      },
+    });
+    onDone();
+  }
+
+  return (
+    <tr>
+      <td>
+        <select value={bucketId} onChange={(e) => setBucketId(e.target.value)}>
+          {BUCKET_GROUPS.map((g) => {
+            const bs = buckets.filter((b) => b.type === g.type);
+            return bs.length ? (
+              <optgroup key={g.type} label={g.label}>
+                {bs.map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.name}
+                  </option>
+                ))}
+              </optgroup>
+            ) : null;
+          })}
+        </select>
+      </td>
+      <td>
+        <input value={label} onChange={(e) => setLabel(e.target.value)} onKeyDown={(e) => e.key === "Enter" && save()} />
+      </td>
+      <td className="num">
+        <input
+          type="number"
+          value={amt}
+          onChange={(e) => setAmt(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && save()}
+          style={{ width: 100 }}
+        />
+      </td>
+      <td className="actions">
+        <button className="primary small" onClick={save}>
+          Save
+        </button>{" "}
+        <button className="small ghost" onClick={onDone}>
+          Cancel
+        </button>
+      </td>
+    </tr>
   );
 }
