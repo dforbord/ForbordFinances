@@ -195,6 +195,12 @@ input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: -1
 .field.amt { width: 130px; }
 .field.type { width: 130px; }
 
+/* Click-a-color swatch picker (buckets) */
+.swatches { display: flex; flex-wrap: wrap; gap: 6px; max-width: 152px; }
+.swatch { width: 22px; height: 22px; border-radius: 6px; border: 0; padding: 0; cursor: pointer; outline: 2px solid transparent; outline-offset: 1px; }
+.swatch.selected { outline-color: var(--text); }
+.inline-edit + .swatches { margin-top: 8px; }
+
 .empty { color: var(--muted); padding: 24px; text-align: center; border: 1px dashed var(--border); border-radius: var(--radius); }
 
 .toolbar { display: flex; gap: 10px; flex-wrap: wrap; }

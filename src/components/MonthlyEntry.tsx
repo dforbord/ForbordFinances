@@ -3,6 +3,14 @@ import { useStore, uid } from "../store";
 import { monthKey } from "../storage";
 import { fmt, todayKey } from "../format";
 import { MonthSwitch } from "./MonthSwitch";
+import { BucketType } from "../types";
+
+// Order + friendly labels for grouping the bucket dropdown by type.
+const BUCKET_GROUPS: { type: BucketType; label: string }[] = [
+  { type: "expense", label: "Expenses" },
+  { type: "tax", label: "Taxes" },
+  { type: "savings", label: "Savings" },
+];
 
 // Stamp entries with a real date: today if logging the current month, else the
 // 1st of the month being edited. Powers the weekly charts.
@@ -158,11 +166,18 @@ export function MonthlyEntry({
                     value={txnBucket}
                     onChange={(e) => setTxnBucket(e.target.value)}
                   >
-                    {state.buckets.map((b) => (
-                      <option key={b.id} value={b.id}>
-                        {b.name} ({b.type})
-                      </option>
-                    ))}
+                    {BUCKET_GROUPS.map((g) => {
+                      const bs = state.buckets.filter((b) => b.type === g.type);
+                      return bs.length ? (
+                        <optgroup key={g.type} label={g.label}>
+                          {bs.map((b) => (
+                            <option key={b.id} value={b.id}>
+                              {b.name}
+                            </option>
+                          ))}
+                        </optgroup>
+                      ) : null;
+                    })}
                   </select>
                 </div>
                 <div className="field grow">

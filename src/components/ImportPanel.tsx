@@ -1,11 +1,17 @@
 import { useMemo, useRef, useState } from "react";
 import { useStore, uid, ImportItem } from "../store";
 import { fmt } from "../format";
-import { CategoryRule } from "../types";
+import { BucketType, CategoryRule } from "../types";
 import { deriveKeyword, fingerprint, parseStatement, suggestCategory, ParsedTxn } from "../import";
 
 const INCOME = "__income__";
 const IGNORE = "__ignore__";
+
+const BUCKET_GROUPS: { type: BucketType; label: string }[] = [
+  { type: "expense", label: "Expenses" },
+  { type: "tax", label: "Taxes" },
+  { type: "savings", label: "Savings" },
+];
 
 interface Row {
   id: string;
@@ -159,11 +165,18 @@ export function ImportPanel() {
                           <select value={r.choice} onChange={(e) => setChoice(r.id, e.target.value)}>
                             <option value="">— choose —</option>
                             <option value={INCOME}>Income</option>
-                            {state.buckets.map((b) => (
-                              <option key={b.id} value={b.id}>
-                                {b.name} ({b.type})
-                              </option>
-                            ))}
+                            {BUCKET_GROUPS.map((g) => {
+                              const bs = state.buckets.filter((b) => b.type === g.type);
+                              return bs.length ? (
+                                <optgroup key={g.type} label={g.label}>
+                                  {bs.map((b) => (
+                                    <option key={b.id} value={b.id}>
+                                      {b.name}
+                                    </option>
+                                  ))}
+                                </optgroup>
+                              ) : null;
+                            })}
                             <option value={IGNORE}>Ignore / transfer</option>
                           </select>
                         )}
