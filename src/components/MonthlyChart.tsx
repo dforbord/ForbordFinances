@@ -15,15 +15,27 @@ export interface MonthlyPoint {
  * A per-month trend line. Each dot is one month's total with its value printed above it;
  * past months are solid (settled), the current month is a hollow "live" dot whose value
  * keeps climbing as new statements are imported.
+ *
+ * Pass `compare` (values index-aligned with `points`) to overlay a second, dashed line —
+ * used on the income chart to show gross (dashed) behind the more prominent net (solid).
  */
 export function MonthlyChart({
   title,
   color,
   points,
+  compare,
+  primaryLabel,
+  compareLabel,
 }: {
   title: string;
   color: string;
   points: MonthlyPoint[];
+  /** Optional secondary series, drawn as a dashed line under the solid primary. */
+  compare?: number[];
+  /** Legend label for the solid primary line (only shown when a compare series is given). */
+  primaryLabel?: string;
+  /** Legend label for the dashed compare line. */
+  compareLabel?: string;
 }) {
   const svgRef = useRef<SVGSVGElement>(null);
   const [W, setW] = useState(600);
@@ -42,10 +54,12 @@ export function MonthlyChart({
   const padTop = 30; // room for the value labels printed above each dot
   const padBottom = 26;
   const n = points.length;
+  const hasCompare = !!compare && compare.length === n;
 
   const values = points.map((p) => p.value);
-  const max = Math.max(1, ...values);
-  const min = Math.min(0, ...values);
+  const allValues = hasCompare ? [...values, ...compare!] : values;
+  const max = Math.max(1, ...allValues);
+  const min = Math.min(0, ...allValues);
   const span = max - min || 1;
 
   const x = (i: number) => padX + (n <= 1 ? 0 : (i * (W - padX * 2)) / (n - 1));
@@ -53,9 +67,11 @@ export function MonthlyChart({
 
   const linePts = points.map((p, i) => `${x(i)},${y(p.value)}`).join(" ");
   const areaPts = `${x(0)},${y(min)} ${linePts} ${x(n - 1)},${y(min)}`;
+  const comparePts = hasCompare ? compare!.map((v, i) => `${x(i)},${y(v)}`).join(" ") : "";
   const zeroY = y(0);
 
-  const current = points.find((p) => p.isCurrent);
+  const currentIdx = points.findIndex((p) => p.isCurrent);
+  const current = currentIdx >= 0 ? points[currentIdx] : undefined;
   const headline = current ? current.value : (points[n - 1]?.value ?? 0);
   const gid = `mgrad-${title.replace(/\W/g, "")}`;
 
@@ -68,6 +84,22 @@ export function MonthlyChart({
           {current && <span className="chart-delta subtle"> · this month so far</span>}
         </span>
       </div>
+      {hasCompare && (primaryLabel || compareLabel) && (
+        <div className="chart-legend">
+          {compareLabel && (
+            <span className="chart-leg">
+              <span className="chart-leg-swatch dashed" style={{ borderTopColor: color }} />
+              {compareLabel}
+            </span>
+          )}
+          {primaryLabel && (
+            <span className="chart-leg">
+              <span className="chart-leg-swatch" style={{ borderTopColor: color }} />
+              {primaryLabel}
+            </span>
+          )}
+        </div>
+      )}
       <svg
         ref={svgRef}
         viewBox={`0 0 ${W} ${H}`}
@@ -85,7 +117,25 @@ export function MonthlyChart({
           <line x1={padX} y1={zeroY} x2={W - padX} y2={zeroY} className="chart-zero" />
         )}
         <polygon points={areaPts} fill={`url(#${gid})`} />
-        <polyline points={linePts} fill="none" stroke={color} strokeWidth="2" />
+        {/* Dashed compare line (e.g. gross income) sits behind the prominent solid line. */}
+        {hasCompare && (
+          <>
+            <polyline
+              points={comparePts}
+              fill="none"
+              stroke={color}
+              strokeWidth="2"
+              strokeDasharray="5 4"
+              opacity="0.8"
+            />
+            {compare!.map((v, i) => (
+              <circle key={`c${i}`} cx={x(i)} cy={y(v)} r={3} fill="var(--surface)" stroke={color} strokeWidth="1.5" opacity="0.8">
+                <title>{`${points[i].fullLabel} ${compareLabel ?? "gross"}: ${fmtShort(v)}`}</title>
+              </circle>
+            ))}
+          </>
+        )}
+        <polyline points={linePts} fill="none" stroke={color} strokeWidth={hasCompare ? "2.75" : "2"} />
         {points.map((p, i) => {
           const cx = x(i);
           const cy = y(p.value);
@@ -116,7 +166,7 @@ export function MonthlyChart({
               >
                 {fmtShort(p.value)}
               </text>
-              <title>{`${p.fullLabel}${p.isCurrent ? " (so far)" : ""}: ${fmtShort(p.value)}`}</title>
+              <title>{`${p.fullLabel}${p.isCurrent ? " (so far)" : ""}${hasCompare && primaryLabel ? ` ${primaryLabel}` : ""}: ${fmtShort(p.value)}`}</title>
             </g>
           );
         })}

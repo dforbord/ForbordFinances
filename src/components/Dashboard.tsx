@@ -78,7 +78,10 @@ export function Dashboard({
       value: pick(m),
       isCurrent: m.isCurrent,
     }));
-  const incomePoints = toPoints((m) => m.income);
+  // Income chart shows two lines: gross (dashed) and net = gross − taxes (solid, prominent).
+  // "Taxes" is whatever's logged into tax-type buckets (the 1099 Income Tax bucket).
+  const netIncomePoints = toPoints((m) => m.income - m.taxes);
+  const grossIncomeValues = months.map((m) => m.income);
   const spendPoints = toPoints((m) => m.spending);
   const savingsPoints = toPoints((m) => m.savings);
 
@@ -123,7 +126,14 @@ export function Dashboard({
       <div className="section">
         <h2>Monthly trends <span className="subtle" style={{ fontWeight: 400 }}>· last 5 months</span></h2>
         <div className="chart-row chart-row-3">
-          <MonthlyChart title="Income / month" color={GREEN} points={incomePoints} />
+          <MonthlyChart
+            title="Income / month"
+            color={GREEN}
+            points={netIncomePoints}
+            compare={grossIncomeValues}
+            primaryLabel="Net"
+            compareLabel="Gross"
+          />
           <MonthlyChart title="Spending / month" color={ORANGE} points={spendPoints} />
           <MonthlyChart title="Savings / month" color={BLUE} points={savingsPoints} />
         </div>
