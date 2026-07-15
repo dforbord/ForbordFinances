@@ -71,6 +71,7 @@ export function Goals() {
               placeholder="e.g. House down payment"
               value={name}
               onChange={(e) => setName(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && add()}
             />
           </div>
           <div className="field amt">
@@ -80,11 +81,17 @@ export function Goals() {
               placeholder="10000"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && add()}
             />
           </div>
           <div className="field" style={{ width: 160 }}>
             <label>Target date</label>
-            <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+            <input
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && add()}
+            />
           </div>
           <div className="field amt">
             <label>Already saved</label>
@@ -93,6 +100,7 @@ export function Goals() {
               placeholder="0"
               value={startAmount}
               onChange={(e) => setStartAmount(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && add()}
             />
           </div>
           <button className="primary" onClick={add}>

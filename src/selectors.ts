@@ -82,9 +82,9 @@ export interface MonthPoint {
   /** Full label for tooltips ("June 2026"). */
   fullLabel: string;
   income: number;
-  /** Everything spent — expense + tax buckets (savings is its own series). */
-  spending: number;
-  /** Just the tax-bucket portion of spending — lets the income chart show net = income − taxes. */
+  /** Pure spending — expense buckets only (taxes and savings have their own series). */
+  expenses: number;
+  /** Tax-bucket total. Powers the taxes chart and net income = income − taxes. */
   taxes: number;
   savings: number;
   /** The live, still-accumulating month: its dot keeps moving as statements are uploaded. */
@@ -112,7 +112,7 @@ export function monthlySeries(state: AppState, months = 5, now: Date = new Date(
     const md = state.months[key];
 
     let income = 0;
-    let spending = 0;
+    let expenses = 0;
     let taxes = 0;
     let savings = 0;
     if (md) {
@@ -120,10 +120,8 @@ export function monthlySeries(state: AppState, months = 5, now: Date = new Date(
       for (const t of md.txns) {
         const type = typeById.get(t.bucketId);
         if (type === "savings") savings += t.amount;
-        else if (type === "expense" || type === "tax") {
-          spending += t.amount;
-          if (type === "tax") taxes += t.amount;
-        }
+        else if (type === "tax") taxes += t.amount;
+        else if (type === "expense") expenses += t.amount;
       }
     }
 
@@ -134,7 +132,7 @@ export function monthlySeries(state: AppState, months = 5, now: Date = new Date(
       label: i === months - 1 ? `${short} ${d.getFullYear()}` : short,
       fullLabel: `${short} ${d.getFullYear()}`,
       income,
-      spending,
+      expenses,
       taxes,
       savings,
       isCurrent: key === currentKey,

@@ -22,6 +22,25 @@ const TYPE_COLORS: Record<BucketType, string> = {
   savings: "#10b981", // green
 };
 
+/** Click-a-color picker — far friendlier than a dropdown of hex codes. */
+function ColorSwatches({ value, onChange }: { value: string; onChange: (c: string) => void }) {
+  return (
+    <div className="swatches">
+      {COLORS.map((c) => (
+        <button
+          key={c}
+          type="button"
+          className={`swatch${value === c ? " selected" : ""}`}
+          style={{ background: c }}
+          onClick={() => onChange(c)}
+          aria-label={`Use color ${c}`}
+          title={c}
+        />
+      ))}
+    </div>
+  );
+}
+
 export function Buckets({ embedded }: { embedded?: boolean } = {}) {
   const { state, dispatch } = useStore();
 
@@ -90,15 +109,9 @@ export function Buckets({ embedded }: { embedded?: boolean } = {}) {
               onKeyDown={(e) => e.key === "Enter" && add()}
             />
           </div>
-          <div className="field" style={{ width: 96 }}>
+          <div className="field">
             <label>Color</label>
-            <select value={color} onChange={(e) => setColor(e.target.value)}>
-              {COLORS.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </select>
+            <ColorSwatches value={color} onChange={setColor} />
           </div>
           <button className="primary" onClick={add}>
             Add Bucket
@@ -206,6 +219,7 @@ function EditRow({
           <span className="dot" style={{ background: color }} />
           <input value={name} onChange={(e) => setName(e.target.value)} />
         </div>
+        <ColorSwatches value={color} onChange={setColor} />
       </td>
       <td>
         <select value={type} onChange={(e) => setType(e.target.value as BucketType)}>
@@ -225,17 +239,6 @@ function EditRow({
         />
       </td>
       <td className="actions">
-        <select
-          value={color}
-          onChange={(e) => setColor(e.target.value)}
-          style={{ width: 90, display: "inline-block", marginRight: 6 }}
-        >
-          {COLORS.map((c) => (
-            <option key={c} value={c}>
-              {c}
-            </option>
-          ))}
-        </select>
         <button
           className="primary small"
           onClick={() =>

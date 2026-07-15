@@ -9,3 +9,6 @@ node_modules/.tmp
 *.tsbuildinfo
 vite.config.js
 vite.config.d.ts
+
+# Firebase deploy cache (regenerated on every deploy)
+.firebase/

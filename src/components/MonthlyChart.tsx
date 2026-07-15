@@ -12,33 +12,36 @@ export interface MonthlyPoint {
 }
 
 /**
- * A per-month trend line. Each dot is one month's total with its value printed above it;
- * past months are solid (settled), the current month is a hollow "live" dot whose value
- * keeps climbing as new statements are imported.
+ * A per-month trend line. Hovering a month reveals a tooltip with that month's value(s);
+ * past months are solid (settled), the current month is a hollow "live" dot.
  *
- * Pass `compare` (values index-aligned with `points`) to overlay a second, dashed line —
- * used on the income chart to show gross (dashed) behind the more prominent net (solid).
+ * Pass `compare` (values index-aligned with `points`) to enable a second, dashed line —
+ * used on the income chart to overlay gross (dashed) behind net (solid). When a compare
+ * series is present a toggle appears to show/hide it, and per-month numbers move into the
+ * hover tooltip (which lists both series) instead of being printed on every dot.
  */
 export function MonthlyChart({
   title,
   color,
   points,
   compare,
-  primaryLabel,
-  compareLabel,
+  primaryLabel = "Net",
+  compareLabel = "Gross",
 }: {
   title: string;
   color: string;
   points: MonthlyPoint[];
   /** Optional secondary series, drawn as a dashed line under the solid primary. */
   compare?: number[];
-  /** Legend label for the solid primary line (only shown when a compare series is given). */
+  /** Legend/toggle label for the solid primary line. */
   primaryLabel?: string;
-  /** Legend label for the dashed compare line. */
+  /** Legend/toggle label for the dashed compare line. */
   compareLabel?: string;
 }) {
   const svgRef = useRef<SVGSVGElement>(null);
   const [W, setW] = useState(600);
+  const [showGross, setShowGross] = useState(true);
+  const [hover, setHover] = useState<number | null>(null);
   useEffect(() => {
     const el = svgRef.current;
     if (!el) return;
@@ -50,16 +53,17 @@ export function MonthlyChart({
   }, []);
 
   const H = 172;
-  const padX = 34; // room so the first/last value labels don't clip
-  const padTop = 30; // room for the value labels printed above each dot
+  const padX = 34;
+  const padTop = 30;
   const padBottom = 26;
   const n = points.length;
   const hasCompare = !!compare && compare.length === n;
+  const showingCompare = hasCompare && showGross;
 
   const values = points.map((p) => p.value);
-  const allValues = hasCompare ? [...values, ...compare!] : values;
-  const max = Math.max(1, ...allValues);
-  const min = Math.min(0, ...allValues);
+  const active = showingCompare ? [...values, ...compare!] : values;
+  const max = Math.max(1, ...active);
+  const min = Math.min(0, ...active);
   const span = max - min || 1;
 
   const x = (i: number) => padX + (n <= 1 ? 0 : (i * (W - padX * 2)) / (n - 1));
@@ -67,13 +71,30 @@ export function MonthlyChart({
 
   const linePts = points.map((p, i) => `${x(i)},${y(p.value)}`).join(" ");
   const areaPts = `${x(0)},${y(min)} ${linePts} ${x(n - 1)},${y(min)}`;
-  const comparePts = hasCompare ? compare!.map((v, i) => `${x(i)},${y(v)}`).join(" ") : "";
+  const comparePts = showingCompare ? compare!.map((v, i) => `${x(i)},${y(v)}`).join(" ") : "";
   const zeroY = y(0);
 
   const currentIdx = points.findIndex((p) => p.isCurrent);
   const current = currentIdx >= 0 ? points[currentIdx] : undefined;
   const headline = current ? current.value : (points[n - 1]?.value ?? 0);
   const gid = `mgrad-${title.replace(/\W/g, "")}`;
+
+  function onMove(e: React.MouseEvent<SVGSVGElement>) {
+    const r = e.currentTarget.getBoundingClientRect();
+    const px = ((e.clientX - r.left) / Math.max(1, r.width)) * W;
+    const step = n > 1 ? (W - padX * 2) / (n - 1) : 1;
+    const idx = Math.max(0, Math.min(n - 1, Math.round((px - padX) / step)));
+    setHover(idx);
+  }
+
+  // Tooltip anchor: above the higher of the two lines at the hovered month.
+  const tipTop =
+    hover == null
+      ? 0
+      : showingCompare
+        ? Math.min(y(points[hover].value), y(compare![hover]))
+        : y(points[hover].value);
+  const tipLeftPct = hover == null ? 0 : Math.max(12, Math.min(88, (x(hover) / W) * 100));
 
   return (
     <div className="card chart-card">
@@ -84,98 +105,123 @@ export function MonthlyChart({
           {current && <span className="chart-delta subtle"> · this month so far</span>}
         </span>
       </div>
-      {hasCompare && (primaryLabel || compareLabel) && (
-        <div className="chart-legend">
-          {compareLabel && (
-            <span className="chart-leg">
-              <span className="chart-leg-swatch dashed" style={{ borderTopColor: color }} />
-              {compareLabel}
-            </span>
-          )}
-          {primaryLabel && (
-            <span className="chart-leg">
-              <span className="chart-leg-swatch" style={{ borderTopColor: color }} />
-              {primaryLabel}
-            </span>
-          )}
+      {hasCompare && (
+        <div className="chart-toggle" role="group" aria-label="Income view">
+          <button className={!showGross ? "active" : ""} onClick={() => setShowGross(false)}>
+            {primaryLabel}
+          </button>
+          <button className={showGross ? "active" : ""} onClick={() => setShowGross(true)}>
+            {compareLabel}
+          </button>
         </div>
       )}
-      <svg
-        ref={svgRef}
-        viewBox={`0 0 ${W} ${H}`}
-        width="100%"
-        height={H}
-        className="chart-svg chart-svg-tall"
-      >
-        <defs>
-          <linearGradient id={gid} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={color} stopOpacity="0.35" />
-            <stop offset="100%" stopColor={color} stopOpacity="0" />
-          </linearGradient>
-        </defs>
-        {min < 0 && max > 0 && (
-          <line x1={padX} y1={zeroY} x2={W - padX} y2={zeroY} className="chart-zero" />
-        )}
-        <polygon points={areaPts} fill={`url(#${gid})`} />
-        {/* Dashed compare line (e.g. gross income) sits behind the prominent solid line. */}
-        {hasCompare && (
-          <>
-            <polyline
-              points={comparePts}
-              fill="none"
-              stroke={color}
-              strokeWidth="2"
-              strokeDasharray="5 4"
-              opacity="0.8"
-            />
-            {compare!.map((v, i) => (
-              <circle key={`c${i}`} cx={x(i)} cy={y(v)} r={3} fill="var(--surface)" stroke={color} strokeWidth="1.5" opacity="0.8">
-                <title>{`${points[i].fullLabel} ${compareLabel ?? "gross"}: ${fmtShort(v)}`}</title>
-              </circle>
-            ))}
-          </>
-        )}
-        <polyline points={linePts} fill="none" stroke={color} strokeWidth={hasCompare ? "2.75" : "2"} />
-        {points.map((p, i) => {
-          const cx = x(i);
-          const cy = y(p.value);
-          return (
-            <g key={i}>
-              {p.isCurrent ? (
-                <>
-                  <circle
-                    cx={cx}
-                    cy={cy}
-                    r={7}
-                    fill="var(--surface)"
-                    stroke={color}
-                    strokeWidth="2"
-                    className="chart-dot-live"
-                  />
-                  <circle cx={cx} cy={cy} r={3} fill={color} />
-                </>
-              ) : (
-                <circle cx={cx} cy={cy} r={4} fill={color} />
-              )}
+      <div className="chart-plot">
+        <svg
+          ref={svgRef}
+          viewBox={`0 0 ${W} ${H}`}
+          width="100%"
+          height={H}
+          className="chart-svg chart-svg-tall"
+          onMouseMove={onMove}
+          onMouseLeave={() => setHover(null)}
+        >
+          <defs>
+            <linearGradient id={gid} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={color} stopOpacity="0.35" />
+              <stop offset="100%" stopColor={color} stopOpacity="0" />
+            </linearGradient>
+          </defs>
+          {min < 0 && max > 0 && (
+            <line x1={padX} y1={zeroY} x2={W - padX} y2={zeroY} className="chart-zero" />
+          )}
+          <polygon points={areaPts} fill={`url(#${gid})`} />
+          {showingCompare && (
+            <>
+              <polyline
+                points={comparePts}
+                fill="none"
+                stroke={color}
+                strokeWidth="2"
+                strokeDasharray="5 4"
+                opacity="0.8"
+              />
+              {compare!.map((v, i) => (
+                <circle key={`c${i}`} cx={x(i)} cy={y(v)} r={3} fill="var(--surface)" stroke={color} strokeWidth="1.5" opacity="0.8" />
+              ))}
+            </>
+          )}
+          <polyline points={linePts} fill="none" stroke={color} strokeWidth={hasCompare ? "2.75" : "2"} />
+          {points.map((p, i) => {
+            const cx = x(i);
+            const cy = y(p.value);
+            return p.isCurrent ? (
+              <g key={i}>
+                <circle cx={cx} cy={cy} r={7} fill="var(--surface)" stroke={color} strokeWidth="2" className="chart-dot-live" />
+                <circle cx={cx} cy={cy} r={3} fill={color} />
+              </g>
+            ) : (
+              <circle key={i} cx={cx} cy={cy} r={4} fill={color} />
+            );
+          })}
+          {/* Single-metric charts print each month's value; the income chart moves numbers to hover. */}
+          {!hasCompare &&
+            points.map((p, i) => (
               <text
-                x={cx}
-                y={Math.max(13, cy - 12)}
+                key={`v${i}`}
+                x={x(i)}
+                y={Math.max(13, y(p.value) - 12)}
                 className="chart-vallabel"
                 textAnchor="middle"
                 fill={color}
               >
                 {fmtShort(p.value)}
               </text>
-              <title>{`${p.fullLabel}${p.isCurrent ? " (so far)" : ""}${hasCompare && primaryLabel ? ` ${primaryLabel}` : ""}: ${fmtShort(p.value)}`}</title>
+            ))}
+          {points.map((p, i) => (
+            <text key={`l${i}`} x={x(i)} y={H - 8} className="chart-xlabel" textAnchor="middle">
+              {p.label}
+            </text>
+          ))}
+          {hover != null && (
+            <g pointerEvents="none">
+              <line x1={x(hover)} x2={x(hover)} y1={padTop - 6} y2={H - padBottom} className="chart-guide" />
+              {showingCompare && <circle cx={x(hover)} cy={y(compare![hover])} r={4} fill={color} opacity="0.9" />}
+              <circle cx={x(hover)} cy={y(points[hover].value)} r={5} fill={color} stroke="var(--surface)" strokeWidth="2" />
             </g>
-          );
-        })}
-        {points.map((p, i) => (
-          <text key={`l${i}`} x={x(i)} y={H - 8} className="chart-xlabel" textAnchor="middle">
-            {p.label}
-          </text>
-        ))}
-      </svg>
+          )}
+        </svg>
+        {hover != null && (
+          <div className="chart-tip" style={{ left: `${tipLeftPct}%`, top: tipTop }}>
+            <div className="chart-tip-month">
+              {points[hover].fullLabel}
+              {points[hover].isCurrent ? " · so far" : ""}
+            </div>
+            {hasCompare ? (
+              <>
+                {showingCompare && (
+                  <div className="chart-tip-row">
+                    <span className="chart-tip-swatch dashed" style={{ borderTopColor: color }} />
+                    <span className="chart-tip-key">{compareLabel}</span>
+                    <b>{fmtShort(compare![hover])}</b>
+                  </div>
+                )}
+                <div className="chart-tip-row">
+                  <span className="chart-tip-swatch" style={{ borderTopColor: color }} />
+                  <span className="chart-tip-key">{primaryLabel}</span>
+                  <b>{fmtShort(points[hover].value)}</b>
+                </div>
+                {showingCompare && (
+                  <div className="chart-tip-sub">Taxes {fmtShort(compare![hover] - points[hover].value)}</div>
+                )}
+              </>
+            ) : (
+              <div className="chart-tip-row">
+                <b>{fmtShort(points[hover].value)}</b>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
