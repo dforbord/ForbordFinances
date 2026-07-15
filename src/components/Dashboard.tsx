@@ -184,7 +184,7 @@ export function Dashboard({
       {state.buckets.length === 0 ? (
         <div className="section">
           <div className="empty">
-            No buckets yet. Go to <strong>Buckets</strong> to create expense, tax, and savings
+            No buckets yet. Go to <strong>Log Entries</strong> to create expense, tax, and savings
             categories.
           </div>
         </div>

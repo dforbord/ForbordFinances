@@ -52,7 +52,7 @@ export function Savings() {
         <div>
           <h1>Savings Accounts</h1>
           <div className="subtle">
-            Balances grow as you log savings contributions in Monthly Entry
+            Balances grow as you log savings contributions in Log Entries
           </div>
         </div>
       </div>
@@ -156,7 +156,7 @@ export function Savings() {
             </table>
           )}
           <div className="help">
-            To add money here, go to <strong>Monthly Entry</strong>, log an amount under a{" "}
+            To add money here, go to <strong>Log Entries</strong>, log an amount under a{" "}
             <strong>savings</strong> bucket, and pick this account in the “Into account” dropdown.
           </div>
         </div>

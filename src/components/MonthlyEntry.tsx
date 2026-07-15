@@ -155,7 +155,7 @@ export function MonthlyEntry({
         <div className="card">
           {state.buckets.length === 0 ? (
             <div className="empty">
-              Create some buckets first (Buckets tab) so you have categories to assign.
+              Create some buckets first (in the Buckets section below) so you have categories to assign.
             </div>
           ) : (
             <>
@@ -213,7 +213,7 @@ export function MonthlyEntry({
                   />
                 </div>
                 <button className="primary" onClick={addTxn}>
-                  Add
+                  Add entry
                 </button>
               </div>
 
