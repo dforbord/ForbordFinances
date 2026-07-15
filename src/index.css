@@ -243,10 +243,31 @@ input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: -1
    current, still-accumulating month. */
 .chart-row-3 { grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); }
 .chart-vallabel { font-size: 11px; font-weight: 700; }
-.chart-legend { display: flex; gap: 14px; margin: -2px 0 4px; }
-.chart-leg { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 600; color: var(--muted); }
-.chart-leg-swatch { width: 16px; height: 0; border-top: 2.5px solid; }
-.chart-leg-swatch.dashed { border-top-style: dashed; border-top-width: 2px; }
+/* Net / Gross toggle on the income chart */
+.chart-toggle { display: inline-flex; gap: 2px; margin: 0 0 6px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; padding: 2px; }
+.chart-toggle button { border: 0; background: transparent; color: var(--muted); font-size: 11px; font-weight: 600; padding: 3px 11px; border-radius: 6px; cursor: pointer; }
+.chart-toggle button.active { background: var(--surface); color: var(--text); }
+
+/* Hover tooltip */
+.chart-plot { position: relative; }
+.chart-guide { stroke: var(--border); stroke-width: 1; stroke-dasharray: 3 3; }
+.chart-tip {
+  position: absolute; transform: translate(-50%, calc(-100% - 10px));
+  background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px;
+  padding: 7px 10px; font-size: 11px; color: var(--text); white-space: nowrap;
+  pointer-events: none; box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35); z-index: 5;
+}
+.chart-tip-month { color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 4px; }
+.chart-tip-row { display: flex; align-items: center; gap: 7px; line-height: 1.6; }
+.chart-tip-key { color: var(--muted); min-width: 42px; }
+.chart-tip-row b { font-variant-numeric: tabular-nums; }
+.chart-tip-swatch { width: 14px; height: 0; border-top: 2.5px solid; display: inline-block; }
+.chart-tip-swatch.dashed { border-top-style: dashed; border-top-width: 2px; }
+.chart-tip-sub { color: var(--muted); font-size: 10px; margin-top: 3px; }
+
+/* Two-up chart grid (Income+Spending / Savings+Taxes); single column when narrow */
+.chart-grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+@media (max-width: 760px) { .chart-grid-2 { grid-template-columns: 1fr; } }
 .chart-dot-live { animation: chart-live-pulse 1.8s ease-in-out infinite; }
 @keyframes chart-live-pulse {
   0%, 100% { opacity: 1; }

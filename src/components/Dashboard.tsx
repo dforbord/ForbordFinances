@@ -15,6 +15,7 @@ const TYPE_LABEL: Record<BucketType, string> = {
 const GREEN = "#10b981";
 const ORANGE = "#f97316";
 const BLUE = "#3b82f6";
+const RED = "#ef4444";
 
 // Known household accounts → preferred first name.
 const NAME_BY_EMAIL: Record<string, string> = {
@@ -78,12 +79,14 @@ export function Dashboard({
       value: pick(m),
       isCurrent: m.isCurrent,
     }));
-  // Income chart shows two lines: gross (dashed) and net = gross − taxes (solid, prominent).
-  // "Taxes" is whatever's logged into tax-type buckets (the 1099 Income Tax bucket).
+  // Income chart: net = gross − taxes (solid), with gross available as a toggleable dashed
+  // overlay. "Taxes" is spending in tax-type buckets (the 1099 Income Tax bucket).
   const netIncomePoints = toPoints((m) => m.income - m.taxes);
   const grossIncomeValues = months.map((m) => m.income);
-  const spendPoints = toPoints((m) => m.spending);
+  // Spending is pure expenses now; taxes and savings each get their own chart.
+  const expensePoints = toPoints((m) => m.expenses);
   const savingsPoints = toPoints((m) => m.savings);
+  const taxPoints = toPoints((m) => m.taxes);
 
   const groups: BucketType[] = ["expense", "tax", "savings"];
 
@@ -125,7 +128,7 @@ export function Dashboard({
       {/* Monthly trend charts — the current month is a live running total; past months settle. */}
       <div className="section">
         <h2>Monthly trends <span className="subtle" style={{ fontWeight: 400 }}>· last 5 months</span></h2>
-        <div className="chart-row chart-row-3">
+        <div className="chart-grid-2">
           <MonthlyChart
             title="Income / month"
             color={GREEN}
@@ -134,8 +137,9 @@ export function Dashboard({
             primaryLabel="Net"
             compareLabel="Gross"
           />
-          <MonthlyChart title="Spending / month" color={ORANGE} points={spendPoints} />
+          <MonthlyChart title="Spending / month" color={ORANGE} points={expensePoints} />
           <MonthlyChart title="Savings / month" color={BLUE} points={savingsPoints} />
+          <MonthlyChart title="Taxes / month" color={RED} points={taxPoints} />
         </div>
       </div>
 
