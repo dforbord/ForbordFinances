@@ -1,8 +1,17 @@
 import { useMemo, useRef, useState } from "react";
 import { useStore, uid, ImportItem } from "../store";
-import { fmt } from "../format";
-import { BucketType, CategoryRule } from "../types";
+import { fmt, parseDate, dateKey, todayKey, daysBetween } from "../format";
+import { BucketType, CategoryRule, UploadRecord } from "../types";
 import { deriveKeyword, fingerprint, parseStatement, suggestCategory, ParsedTxn } from "../import";
+
+/** "Jun 3, 2026" for a YYYY-MM-DD key. */
+function fmtDay(key: string): string {
+  return parseDate(key).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
 
 const INCOME = "__income__";
 const IGNORE = "__ignore__";
@@ -68,6 +77,25 @@ export function ImportPanel() {
     setRows((rs) => rs.map((r) => (r.id === id ? { ...r, choice } : r)));
   }
 
+  // Coverage summary from the upload log: what the last file covered, and what
+  // date range the next upload still needs so nothing slips through the cracks.
+  const coverage = useMemo(() => {
+    const uploads = state.uploads;
+    if (uploads.length === 0) return null;
+    const lastUpload = uploads[uploads.length - 1];
+    const coveredThrough = uploads.reduce(
+      (max, u) => (u.coverageEnd > max ? u.coverageEnd : max),
+      uploads[0].coverageEnd,
+    );
+    const dayAfter = parseDate(coveredThrough);
+    dayAfter.setDate(dayAfter.getDate() + 1);
+    const nextStart = dateKey(dayAfter);
+    const today = todayKey();
+    // Whole days still uncovered between the last statement and today.
+    const gapDays = daysBetween(parseDate(nextStart), parseDate(today)) + 1;
+    return { lastUpload, coveredThrough, nextStart, today, gapDays };
+  }, [state.uploads]);
+
   const importable = rows.filter((r) => !r.dup && r.choice !== IGNORE && r.choice !== "");
   const needCat = rows.filter((r) => !r.dup && r.choice === "").length;
 
@@ -90,7 +118,20 @@ export function ImportPanel() {
         if (kw) rules.push({ keyword: kw, bucketId: r.choice });
       }
     }
-    dispatch({ type: "IMPORT_BATCH", items, rules });
+    // Record what this file covered — the full span of every row it held, not
+    // just the new ones — so the next upload knows where to pick up from.
+    const dates = rows.map((r) => r.parsed.date).sort();
+    const upload: UploadRecord = {
+      id: uid(),
+      fileName: fileName ?? "statement",
+      importedAt: Date.now(),
+      added: items.length,
+      total: rows.length,
+      coverageStart: dates[0],
+      coverageEnd: dates[dates.length - 1],
+    };
+
+    dispatch({ type: "IMPORT_BATCH", items, rules, upload });
     setRows([]);
     setFileName(null);
     setMsg(`Imported ${items.length} ${items.length === 1 ? "transaction" : "transactions"} into your buckets.`);
@@ -104,6 +145,63 @@ export function ImportPanel() {
           Drop a <strong>.csv</strong>, <strong>.ofx</strong>, or <strong>.qfx</strong> export from
           Chase, Wells Fargo, or Schwab. Spending is sorted into buckets, deposits become income.
         </p>
+
+        {coverage && (
+          <div
+            style={{
+              border: "1px solid var(--border)",
+              borderLeft: "3px solid var(--accent)",
+              borderRadius: "var(--radius)",
+              background: "var(--surface-2)",
+              padding: "11px 14px",
+              margin: "0 0 14px",
+              fontSize: 14,
+            }}
+          >
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "space-between" }}>
+              <span>
+                <strong>Last upload:</strong> {coverage.lastUpload.fileName}
+              </span>
+              <span className="subtle">
+                uploaded{" "}
+                {new Date(coverage.lastUpload.importedAt).toLocaleDateString("en-US", {
+                  month: "short",
+                  day: "numeric",
+                  year: "numeric",
+                })}
+              </span>
+            </div>
+            <div className="subtle" style={{ marginTop: 3 }}>
+              Covered {fmtDay(coverage.lastUpload.coverageStart)} → {fmtDay(coverage.lastUpload.coverageEnd)} ·{" "}
+              {coverage.lastUpload.added} added
+            </div>
+            <div
+              style={{
+                marginTop: 9,
+                paddingTop: 9,
+                borderTop: "1px solid var(--border)",
+              }}
+            >
+              {coverage.gapDays > 0 ? (
+                <>
+                  You have statements through <strong>{fmtDay(coverage.coveredThrough)}</strong>. Your next
+                  upload should cover{" "}
+                  <strong style={{ color: "var(--accent)" }}>
+                    {fmtDay(coverage.nextStart)} → {fmtDay(coverage.today)}
+                  </strong>{" "}
+                  <span className="subtle">
+                    ({coverage.gapDays} {coverage.gapDays === 1 ? "day" : "days"})
+                  </span>
+                  .
+                </>
+              ) : (
+                <span style={{ color: "var(--green)" }}>
+                  You're covered through today — nothing new to upload yet.
+                </span>
+              )}
+            </div>
+          </div>
+        )}
 
         <div
           className={`import-drop ${dragOver ? "over" : ""}`}
