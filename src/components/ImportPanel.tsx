@@ -36,6 +36,9 @@ export function ImportPanel() {
   const [fileName, setFileName] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
+  // Required per upload: the statement period, confirmed on the calendar.
+  const [coverFrom, setCoverFrom] = useState("");
+  const [coverTo, setCoverTo] = useState("");
 
   const existingKeys = useMemo(() => {
     const s = new Set<string>();
@@ -52,6 +55,8 @@ export function ImportPanel() {
     if (parsed.length === 0) {
       setFileName(name);
       setRows([]);
+      setCoverFrom("");
+      setCoverTo("");
       setMsg("Couldn't find any transactions in that file. Try a CSV or an OFX/QFX export.");
       return;
     }
@@ -61,6 +66,11 @@ export function ImportPanel() {
       const choice = dup ? IGNORE : s.kind === "income" ? INCOME : (s.bucketId ?? "");
       return { id: uid(), parsed: p, dup, choice };
     });
+    // Pre-fill the covered range from the transactions found; the user confirms
+    // or widens it to the true statement period before importing.
+    const dates = parsed.map((p) => p.date).sort();
+    setCoverFrom(dates[0]);
+    setCoverTo(dates[dates.length - 1]);
     setFileName(name);
     setRows(built);
   }
@@ -118,22 +128,26 @@ export function ImportPanel() {
         if (kw) rules.push({ keyword: kw, bucketId: r.choice });
       }
     }
-    // Record what this file covered — the full span of every row it held, not
-    // just the new ones — so the next upload knows where to pick up from.
-    const dates = rows.map((r) => r.parsed.date).sort();
+    // Record the statement period the user confirmed on the calendar — this is
+    // what the coverage tracker uses to know which dates are already accounted
+    // for and where the next upload should pick up.
+    const start = coverFrom <= coverTo ? coverFrom : coverTo;
+    const end = coverFrom <= coverTo ? coverTo : coverFrom;
     const upload: UploadRecord = {
       id: uid(),
       fileName: fileName ?? "statement",
       importedAt: Date.now(),
       added: items.length,
       total: rows.length,
-      coverageStart: dates[0],
-      coverageEnd: dates[dates.length - 1],
+      coverageStart: start,
+      coverageEnd: end,
     };
 
     dispatch({ type: "IMPORT_BATCH", items, rules, upload });
     setRows([]);
     setFileName(null);
+    setCoverFrom("");
+    setCoverTo("");
     setMsg(`Imported ${items.length} ${items.length === 1 ? "transaction" : "transactions"} into your buckets.`);
   }
 
@@ -285,11 +299,52 @@ export function ImportPanel() {
               </tbody>
             </table>
 
+            <div
+              style={{
+                marginTop: 14,
+                padding: "12px 14px",
+                border: "1px solid var(--border)",
+                borderLeft: "3px solid var(--accent)",
+                borderRadius: "var(--radius)",
+                background: "var(--surface-2)",
+              }}
+            >
+              <label style={{ fontSize: 13, fontWeight: 600 }}>
+                Dates covered by this statement <span style={{ color: "var(--red)" }}>*</span>
+              </label>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 8, flexWrap: "wrap" }}>
+                <input
+                  type="date"
+                  value={coverFrom}
+                  max={coverTo || undefined}
+                  onChange={(e) => setCoverFrom(e.target.value)}
+                  style={{ width: 160 }}
+                />
+                <span className="subtle">→</span>
+                <input
+                  type="date"
+                  value={coverTo}
+                  min={coverFrom || undefined}
+                  onChange={(e) => setCoverTo(e.target.value)}
+                  style={{ width: 160 }}
+                />
+              </div>
+              <div className="help" style={{ marginTop: 6 }}>
+                Pre-filled from the transactions found — widen it to the full statement period if the
+                statement starts or ends on a day with no activity.
+              </div>
+            </div>
+
             <div className="toolbar" style={{ marginTop: 14, alignItems: "center" }}>
-              <button className="primary" onClick={doImport} disabled={importable.length === 0}>
+              <button
+                className="primary"
+                onClick={doImport}
+                disabled={importable.length === 0 || !coverFrom || !coverTo}
+              >
                 Import {importable.length} {importable.length === 1 ? "transaction" : "transactions"}
               </button>
               <span className="subtle" style={{ fontSize: 13 }}>
+                {(!coverFrom || !coverTo) && "set the dates covered · "}
                 {rows.filter((r) => r.dup).length > 0 && `${rows.filter((r) => r.dup).length} duplicate(s) skipped · `}
                 {needCat > 0 && `${needCat} need a bucket · `}
                 categories are remembered next time
