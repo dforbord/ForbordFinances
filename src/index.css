@@ -194,6 +194,7 @@ input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: -1
 .field.grow { flex: 1; min-width: 140px; }
 .field.amt { width: 130px; }
 .field.type { width: 130px; }
+.field.date { width: 150px; }
 
 /* Click-a-color swatch picker (buckets) */
 .swatches { display: flex; flex-wrap: wrap; gap: 6px; max-width: 152px; }

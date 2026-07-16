@@ -20,6 +20,7 @@ import {
   IncomeEntry,
   PlannedExpense,
   Txn,
+  UploadRecord,
 } from "./types";
 
 export interface ImportItem {
@@ -74,7 +75,7 @@ type Action =
   | { type: "ADD_BUSINESS_EXPENSE"; expense: BusinessExpense }
   | { type: "UPDATE_BUSINESS_EXPENSE"; expense: BusinessExpense }
   | { type: "DELETE_BUSINESS_EXPENSE"; id: string }
-  | { type: "IMPORT_BATCH"; items: ImportItem[]; rules: CategoryRule[] };
+  | { type: "IMPORT_BATCH"; items: ImportItem[]; rules: CategoryRule[]; upload?: UploadRecord };
 
 function ensureMonth(state: AppState, month: string): AppState {
   if (state.months[month]) return state;
@@ -248,7 +249,12 @@ function baseReducer(state: AppState, action: Action): AppState {
       }
       const ruleMap = new Map(state.categoryRules.map((r) => [r.keyword, r]));
       for (const r of action.rules) ruleMap.set(r.keyword, r);
-      return { ...state, months, categoryRules: [...ruleMap.values()] };
+      return {
+        ...state,
+        months,
+        categoryRules: [...ruleMap.values()],
+        uploads: action.upload ? [...state.uploads, action.upload] : state.uploads,
+      };
     }
 
     default:
@@ -275,6 +281,7 @@ function coerce(raw: AppState): AppState {
     goals: Array.isArray(raw.goals) ? raw.goals : [],
     plannedExpenses: Array.isArray(raw.plannedExpenses) ? raw.plannedExpenses : [],
     businessExpenses: Array.isArray(raw.businessExpenses) ? raw.businessExpenses : [],
+    uploads: Array.isArray(raw.uploads) ? raw.uploads : [],
     categoryRules: Array.isArray(raw.categoryRules) ? raw.categoryRules : [],
     lastModified: raw.lastModified ?? 0,
   };

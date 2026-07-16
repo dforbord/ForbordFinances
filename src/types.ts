@@ -87,6 +87,24 @@ export interface PlannedExpense {
   color: string;
 }
 
+/** A record of one bank-statement file imported, so you can see what date ranges
+ *  you've already pulled in and what your next upload still needs to cover. */
+export interface UploadRecord {
+  id: string;
+  /** Name of the uploaded file. */
+  fileName: string;
+  /** Epoch ms when the file was imported. */
+  importedAt: number;
+  /** How many transactions were actually filed into buckets/income. */
+  added: number;
+  /** How many rows the file contained in total (added + duplicates + ignored). */
+  total: number;
+  /** Earliest transaction date in the file (YYYY-MM-DD). */
+  coverageStart: string;
+  /** Latest transaction date in the file (YYYY-MM-DD). */
+  coverageEnd: string;
+}
+
 /** A logged business expense — tracked separately from the household budget. */
 export interface BusinessExpense {
   id: string;
@@ -105,6 +123,8 @@ export interface AppState {
   plannedExpenses: PlannedExpense[];
   /** Business expenses, kept apart from personal buckets/months. */
   businessExpenses: BusinessExpense[];
+  /** History of bank-statement uploads, newest last — powers coverage tracking. */
+  uploads: UploadRecord[];
   /** Learned import categorizations (description → bucket). */
   categoryRules: CategoryRule[];
   /** Epoch ms of the last edit. Used for last-write-wins when syncing devices. */

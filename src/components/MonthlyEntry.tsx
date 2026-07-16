@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useStore, uid } from "../store";
 import { monthKey } from "../storage";
-import { fmt, todayKey } from "../format";
+import { fmt, parseDate, todayKey } from "../format";
 import { MonthSwitch } from "./MonthSwitch";
 import { Bucket, BucketType, IncomeEntry, Txn } from "../types";
 
@@ -16,6 +16,12 @@ const BUCKET_GROUPS: { type: BucketType; label: string }[] = [
 // 1st of the month being edited. Powers the weekly charts.
 function entryDate(month: string): string {
   return month === monthKey(new Date()) ? todayKey() : `${month}-01`;
+}
+
+// "Jul 3" for a YYYY-MM-DD key — the compact date shown in the log tables.
+function fmtDay(key?: string): string {
+  if (!key) return "—";
+  return parseDate(key).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
 export function MonthlyEntry({
@@ -33,6 +39,7 @@ export function MonthlyEntry({
   // Income form
   const [incLabel, setIncLabel] = useState("");
   const [incAmt, setIncAmt] = useState("");
+  const [incDate, setIncDate] = useState(() => entryDate(month));
 
   // Txn form
   const firstBucket = state.buckets[0]?.id ?? "";
@@ -40,6 +47,13 @@ export function MonthlyEntry({
   const [txnLabel, setTxnLabel] = useState("");
   const [txnAmt, setTxnAmt] = useState("");
   const [txnAccount, setTxnAccount] = useState("");
+  const [txnDate, setTxnDate] = useState(() => entryDate(month));
+
+  // When the selected month changes, default both date pickers to that month.
+  useEffect(() => {
+    setIncDate(entryDate(month));
+    setTxnDate(entryDate(month));
+  }, [month]);
 
   // Which logged row is currently being edited in place.
   const [editIncomeId, setEditIncomeId] = useState<string | null>(null);
@@ -54,7 +68,7 @@ export function MonthlyEntry({
     dispatch({
       type: "ADD_INCOME",
       month,
-      entry: { id: uid(), label: incLabel.trim(), amount, date: entryDate(month) },
+      entry: { id: uid(), label: incLabel.trim(), amount, date: incDate || entryDate(month) },
     });
     setIncLabel("");
     setIncAmt("");
@@ -72,7 +86,7 @@ export function MonthlyEntry({
         label: txnLabel.trim() || (selectedBucket?.name ?? ""),
         amount,
         accountId: isSavings && txnAccount ? txnAccount : undefined,
-        date: entryDate(month),
+        date: txnDate || entryDate(month),
       },
     });
     setTxnLabel("");
@@ -108,6 +122,15 @@ export function MonthlyEntry({
                 onKeyDown={(e) => e.key === "Enter" && addIncome()}
               />
             </div>
+            <div className="field date">
+              <label>Date</label>
+              <input
+                type="date"
+                value={incDate}
+                onChange={(e) => setIncDate(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && addIncome()}
+              />
+            </div>
             <div className="field amt">
               <label>Amount</label>
               <input
@@ -138,6 +161,7 @@ export function MonthlyEntry({
                     />
                   ) : (
                     <tr key={i.id}>
+                      <td className="subtle" style={{ whiteSpace: "nowrap" }}>{fmtDay(i.date)}</td>
                       <td>{i.label}</td>
                       <td className="num">{fmt(i.amount)}</td>
                       <td className="actions">
@@ -155,6 +179,7 @@ export function MonthlyEntry({
                   ),
                 )}
                 <tr className="total-row">
+                  <td />
                   <td>Total income</td>
                   <td className="num">{fmt(incomeTotal)}</td>
                   <td />
@@ -218,6 +243,15 @@ export function MonthlyEntry({
                     </select>
                   </div>
                 )}
+                <div className="field date">
+                  <label>Date</label>
+                  <input
+                    type="date"
+                    value={txnDate}
+                    onChange={(e) => setTxnDate(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && addTxn()}
+                  />
+                </div>
                 <div className="field amt">
                   <label>Amount</label>
                   <input
@@ -239,6 +273,7 @@ export function MonthlyEntry({
                 <table className="table">
                   <thead>
                     <tr>
+                      <th style={{ width: 64 }}>Date</th>
                       <th>Bucket</th>
                       <th>Description</th>
                       <th className="num">Amount</th>
@@ -258,6 +293,7 @@ export function MonthlyEntry({
                         />
                       ) : (
                         <tr key={t.id}>
+                          <td className="subtle" style={{ whiteSpace: "nowrap" }}>{fmtDay(t.date)}</td>
                           <td>
                             <span
                               className="dot"
@@ -282,6 +318,7 @@ export function MonthlyEntry({
                       );
                     })}
                     <tr className="total-row">
+                      <td />
                       <td>Total out</td>
                       <td />
                       <td className="num">{fmt(txnTotal)}</td>
@@ -310,19 +347,34 @@ function IncomeEditRow({
   const { dispatch } = useStore();
   const [label, setLabel] = useState(entry.label);
   const [amt, setAmt] = useState(String(entry.amount));
+  const [date, setDate] = useState(entry.date ?? "");
 
   function save() {
     const amount = parseFloat(amt);
     dispatch({
       type: "UPDATE_INCOME",
       month,
-      entry: { ...entry, label: label.trim() || entry.label, amount: isNaN(amount) ? entry.amount : amount },
+      entry: {
+        ...entry,
+        label: label.trim() || entry.label,
+        amount: isNaN(amount) ? entry.amount : amount,
+        date: date || entry.date,
+      },
     });
     onDone();
   }
 
   return (
     <tr>
+      <td>
+        <input
+          type="date"
+          value={date}
+          onChange={(e) => setDate(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && save()}
+          style={{ width: 140 }}
+        />
+      </td>
       <td>
         <input value={label} onChange={(e) => setLabel(e.target.value)} onKeyDown={(e) => e.key === "Enter" && save()} />
       </td>
@@ -362,6 +414,7 @@ function TxnEditRow({
   const [bucketId, setBucketId] = useState(txn.bucketId);
   const [label, setLabel] = useState(txn.label);
   const [amt, setAmt] = useState(String(txn.amount));
+  const [date, setDate] = useState(txn.date ?? "");
 
   const isSavings = buckets.find((b) => b.id === bucketId)?.type === "savings";
 
@@ -375,6 +428,7 @@ function TxnEditRow({
         bucketId,
         label: label.trim(),
         amount: isNaN(amount) ? txn.amount : amount,
+        date: date || txn.date,
         // Keep the savings account only while the bucket is still a savings bucket.
         accountId: isSavings ? txn.accountId : undefined,
       },
@@ -384,6 +438,15 @@ function TxnEditRow({
 
   return (
     <tr>
+      <td>
+        <input
+          type="date"
+          value={date}
+          onChange={(e) => setDate(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && save()}
+          style={{ width: 140 }}
+        />
+      </td>
       <td>
         <select value={bucketId} onChange={(e) => setBucketId(e.target.value)}>
           {BUCKET_GROUPS.map((g) => {
