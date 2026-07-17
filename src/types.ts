@@ -105,6 +105,18 @@ export interface UploadRecord {
   coverageEnd: string;
 }
 
+/** A logged stock-market investment (buy). The pie chart aggregates these by ticker. */
+export interface Investment {
+  id: string;
+  /** Ticker symbol, stored uppercase (e.g. "VOO", "AAPL"). */
+  ticker: string;
+  /** Dollars invested. */
+  amount: number;
+  /** YYYY-MM-DD the investment was made. */
+  date?: string;
+  note?: string;
+}
+
 /** A logged business expense — tracked separately from the household budget. */
 export interface BusinessExpense {
   id: string;
@@ -123,6 +135,8 @@ export interface AppState {
   plannedExpenses: PlannedExpense[];
   /** Business expenses, kept apart from personal buckets/months. */
   businessExpenses: BusinessExpense[];
+  /** Stock-market investments, aggregated by ticker on the Portfolio tab. */
+  investments: Investment[];
   /** History of bank-statement uploads, newest last — powers coverage tracking. */
   uploads: UploadRecord[];
   /** Learned import categorizations (description → bucket). */

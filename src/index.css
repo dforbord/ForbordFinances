@@ -281,6 +281,23 @@ input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: -1
   50% { opacity: 0.4; }
 }
 
+/* Portfolio allocation pie */
+.pie-layout { display: flex; align-items: center; gap: 28px; flex-wrap: wrap; padding: 8px 4px; }
+.pie-svg { flex-shrink: 0; }
+.pie-center-ticker { font-size: 18px; font-weight: 700; fill: var(--text); }
+.pie-center-pct { font-size: 13px; fill: var(--muted); font-variant-numeric: tabular-nums; }
+.pie-legend { flex: 1; min-width: 240px; display: flex; flex-direction: column; gap: 2px; }
+.pie-legend-row {
+  display: flex; align-items: center; gap: 10px; padding: 6px 10px; border-radius: 8px;
+  font-size: 13px; cursor: default; transition: opacity 0.12s ease, background 0.12s ease;
+}
+.pie-legend-row:hover { background: var(--surface-2); }
+.pie-legend-row.dim { opacity: 0.45; }
+.pie-legend-dot { width: 11px; height: 11px; border-radius: 4px; display: inline-block; flex-shrink: 0; }
+.pie-legend-ticker { font-weight: 700; min-width: 56px; }
+.pie-legend-amt { margin-left: auto; font-variant-numeric: tabular-nums; }
+.pie-legend-pct { color: var(--muted); font-variant-numeric: tabular-nums; min-width: 52px; text-align: right; }
+
 /* Quick goals widget */
 .goal-widget-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
 .goal-widget { padding: 14px 16px; }

@@ -7,16 +7,18 @@ import { Goals } from "./components/Goals";
 import { Calendar } from "./components/Calendar";
 import { Savings } from "./components/Savings";
 import { Business } from "./components/Business";
+import { Portfolio } from "./components/Portfolio";
 import { Backup } from "./components/Backup";
 import { SignIn } from "./components/SignIn";
 
-type Tab = "home" | "log" | "goals" | "savings" | "business" | "calendar" | "backup";
+type Tab = "home" | "log" | "goals" | "savings" | "portfolio" | "business" | "calendar" | "backup";
 
 const NAV: { id: Tab; label: string; icon: string }[] = [
   { id: "home", label: "Home", icon: "🏠" },
   { id: "log", label: "Log Entries", icon: "📝" },
   { id: "goals", label: "Goals", icon: "🎯" },
   { id: "savings", label: "Savings", icon: "🏦" },
+  { id: "portfolio", label: "Portfolio", icon: "📈" },
   { id: "business", label: "Business", icon: "💼" },
   { id: "calendar", label: "Expense Calendar", icon: "📅" },
   { id: "backup", label: "Backup", icon: "💾" },
@@ -113,6 +115,7 @@ export function App() {
         {tab === "log" && <LogEntries month={month} setMonth={setMonth} />}
         {tab === "goals" && <Goals />}
         {tab === "savings" && <Savings />}
+        {tab === "portfolio" && <Portfolio />}
         {tab === "business" && <Business />}
         {tab === "calendar" && <Calendar />}
         {tab === "backup" && <Backup />}
