@@ -1,0 +1,14 @@
+{
+  "name": "forbord-teller-proxy",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Option B — Cloudflare Worker that proxies Teller API calls with the mTLS client certificate.",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20260101.0",
+    "wrangler": "^4.0.0"
+  }
+}
