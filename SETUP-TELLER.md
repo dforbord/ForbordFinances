@@ -24,7 +24,7 @@ holds it and forwards read-only calls to `api.teller.io`. You pick one:
 | Privacy | Data never leaves your Mac | Data transits Cloudflare |
 
 Both expose the **same contract**, so the app code is identical — only the
-**Proxy URL** in ⚙ Teller setup differs. You can even set up A now and B later.
+`proxyUrl` in `src/teller-config.ts` differs. You can even set up A now and B later.
 
 ## First, in the Teller dashboard (both options)
 
@@ -33,8 +33,11 @@ Both expose the **same contract**, so the app code is identical — only the
 3. Under **Certificates**, download `certificate.pem` and `private_key.pem`
    (needed for Development/Production; Sandbox needs neither).
 
-Then in the app → **Log Entries → 🏦 Auto-sync → ⚙ Teller setup**: paste the
-Application ID and choose the environment (**Development** for real data).
+Then open **`src/teller-config.ts`** and fill it in once (just like
+`firebase-config.ts`): set `applicationId`, and leave `environment` as
+`development` for real data. Save — the **Connect a bank** button now appears in
+**Log Entries → 🏦 Auto-sync**. There is no in-app setup form; everything the
+operator configures lives in that one file.
 
 ---
 
@@ -53,7 +56,7 @@ Application ID and choose the environment (**Development** for real data).
 2. Launch with **`Budget.command`** as usual — it now also starts the proxy on
    `http://localhost:5181`. You'll see `certificate: loaded ✓` in the terminal.
 
-3. In ⚙ Teller setup, leave **Proxy URL** as `http://localhost:5181`.
+3. Leave `proxyUrl` in `src/teller-config.ts` as `http://localhost:5181` (default).
 
 4. Click **Connect a bank**, log in through Teller's dialog, then **Sync now**.
 
@@ -86,7 +89,7 @@ npx wrangler mtls-certificate upload \
    ```
 
 4. Copy the deployed URL (e.g. `https://forbord-teller-proxy.<you>.workers.dev`)
-   into the app's **Proxy URL** field in ⚙ Teller setup.
+   into `proxyUrl` in `src/teller-config.ts`.
 5. **Connect a bank** → **Sync now**.
 
 ---

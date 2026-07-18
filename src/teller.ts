@@ -12,6 +12,7 @@
 // either one; only `proxyUrl` differs.
 
 import { ParsedTxn } from "./import";
+import { tellerConfig } from "./teller-config";
 
 const STORE_KEY = "forbord.teller.v1"; // NOT synced — local to this browser only.
 const CONNECT_SRC = "https://cdn.teller.io/connect/connect.js";
@@ -44,33 +45,49 @@ export interface TellerConfig {
   enrollments: TellerEnrollment[];
 }
 
-function emptyConfig(): TellerConfig {
-  return {
-    applicationId: "",
-    environment: "development",
-    proxyUrl: DEFAULT_PROXY_URL,
-    enrollments: [],
-  };
+/** What we persist locally: the enrollments (access tokens) and an optional
+ *  proxy-URL override. Application ID and environment come from the baked
+ *  teller-config.ts, never from storage. */
+interface StoredTeller {
+  enrollments: TellerEnrollment[];
+  proxyUrl?: string;
+}
+
+/** True once an Application ID has been filled into teller-config.ts. */
+export function isTellerConfigured(): boolean {
+  return !!tellerConfig.applicationId.trim();
 }
 
 export function loadTeller(): TellerConfig {
+  let stored: StoredTeller = { enrollments: [] };
   try {
     const raw = localStorage.getItem(STORE_KEY);
-    if (!raw) return emptyConfig();
-    const p = JSON.parse(raw) as Partial<TellerConfig>;
-    return {
-      applicationId: p.applicationId ?? "",
-      environment: p.environment ?? "development",
-      proxyUrl: p.proxyUrl || DEFAULT_PROXY_URL,
-      enrollments: Array.isArray(p.enrollments) ? p.enrollments : [],
-    };
+    if (raw) {
+      const p = JSON.parse(raw) as Partial<StoredTeller>;
+      stored = {
+        enrollments: Array.isArray(p.enrollments) ? p.enrollments : [],
+        proxyUrl: typeof p.proxyUrl === "string" ? p.proxyUrl : undefined,
+      };
+    }
   } catch {
-    return emptyConfig();
+    /* fall back to defaults below */
   }
+  return {
+    applicationId: tellerConfig.applicationId,
+    environment: tellerConfig.environment,
+    proxyUrl: stored.proxyUrl || tellerConfig.proxyUrl || DEFAULT_PROXY_URL,
+    enrollments: stored.enrollments,
+  };
 }
 
 export function saveTeller(cfg: TellerConfig): void {
-  localStorage.setItem(STORE_KEY, JSON.stringify(cfg));
+  // Persist only the enrollments (plus a proxy override if it differs from the
+  // baked default). App ID + environment are baked, never written here.
+  const stored: StoredTeller = {
+    enrollments: cfg.enrollments,
+    proxyUrl: cfg.proxyUrl && cfg.proxyUrl !== tellerConfig.proxyUrl ? cfg.proxyUrl : undefined,
+  };
+  localStorage.setItem(STORE_KEY, JSON.stringify(stored));
 }
 
 // ── Teller Connect (front-end widget; no server needed to obtain the token) ──
@@ -117,7 +134,7 @@ function loadConnectScript(): Promise<void> {
  *  user closes the dialog without connecting. */
 export async function openTellerConnect(cfg: TellerConfig): Promise<TellerConnectSuccess | null> {
   if (!cfg.applicationId.trim()) {
-    throw new Error("Add your Teller Application ID first (open ⚙ Teller setup).");
+    throw new Error("Add your Teller Application ID in src/teller-config.ts first (see SETUP-TELLER.md).");
   }
   await loadConnectScript();
   const TC = window.TellerConnect;
@@ -170,7 +187,7 @@ async function proxyGet<T>(cfg: TellerConfig, token: string, path: string): Prom
   } catch {
     throw new Error(
       `Can't reach the Teller proxy at ${base}. ` +
-        `For the local sidecar, make sure it started with the app; for the Cloudflare Worker, check its URL in ⚙ Teller setup.`,
+        `For the local sidecar, make sure it started with the app; for the Cloudflare Worker, check proxyUrl in src/teller-config.ts.`,
     );
   }
   if (!res.ok) {
