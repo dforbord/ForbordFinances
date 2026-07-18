@@ -8,11 +8,11 @@ import {
   enrollmentFromConnect,
   fetchAccounts,
   fetchTransactions,
+  isTellerConfigured,
   loadTeller,
   openTellerConnect,
   saveTeller,
   TellerConfig,
-  TellerEnv,
   TellerSyncTxn,
   upsertEnrollment,
 } from "../teller";
@@ -36,7 +36,6 @@ interface Row {
 export function TellerPanel() {
   const { state, dispatch } = useStore();
   const [cfg, setCfg] = useState<TellerConfig>(loadTeller);
-  const [setupOpen, setSetupOpen] = useState(!cfg.applicationId);
   const [includePending, setIncludePending] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
@@ -52,13 +51,26 @@ export function TellerPanel() {
     return s;
   }, [state.months]);
 
+  // Not set up yet → a one-liner so the feature is discoverable, nothing more.
+  // All operator config lives in src/teller-config.ts (see SETUP-TELLER.md).
+  if (!isTellerConfigured()) {
+    return (
+      <div className="section">
+        <div className="card">
+          <h2 style={{ margin: 0 }}>🏦 Auto-sync from your bank</h2>
+          <p className="subtle" style={{ marginTop: 4, marginBottom: 0 }}>
+            Optional one-time setup lets you link a bank and pull transactions automatically. Add your
+            Teller Application ID in <strong>src/teller-config.ts</strong> (see SETUP-TELLER.md). Until then,
+            use <strong>Import from bank</strong> below.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   function persist(next: TellerConfig) {
     setCfg(next);
     saveTeller(next);
-  }
-
-  function updateField<K extends keyof TellerConfig>(key: K, value: TellerConfig[K]) {
-    persist({ ...cfg, [key]: value });
   }
 
   // ── Connect a new bank ──────────────────────────────────────────────────
@@ -206,77 +218,14 @@ export function TellerPanel() {
     setMsg(`Imported ${items.length} transaction${items.length === 1 ? "" : "s"} into your buckets.`);
   }
 
-  const certNeeded = cfg.environment !== "sandbox";
-
   return (
     <div className="section">
       <div className="card">
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
-          <h2 style={{ margin: 0 }}>🏦 Auto-sync from your bank</h2>
-          <button className="ghost small" onClick={() => setSetupOpen((v) => !v)}>
-            ⚙ Teller setup
-          </button>
-        </div>
+        <h2 style={{ margin: 0 }}>🏦 Auto-sync from your bank</h2>
         <p className="subtle" style={{ marginTop: 4 }}>
-          Connect a bank through Teller and pull transactions automatically — they run through the same
-          bucketing and duplicate-skipping as file import. Your access token stays in this browser only.
+          Link a bank once, then pull transactions with a click — they run through the same bucketing and
+          duplicate-skipping as file import. Your access token stays in this browser only.
         </p>
-
-        {setupOpen && (
-          <div
-            style={{
-              border: "1px solid var(--border)",
-              borderLeft: "3px solid var(--accent)",
-              borderRadius: "var(--radius)",
-              background: "var(--surface-2)",
-              padding: "12px 14px",
-              margin: "6px 0 14px",
-            }}
-          >
-            <div style={{ display: "grid", gap: 10 }}>
-              <label style={{ fontSize: 13, fontWeight: 600 }}>
-                Teller Application ID
-                <input
-                  type="text"
-                  value={cfg.applicationId}
-                  placeholder="app_xxxxxxxxxxxxxxxxxx"
-                  onChange={(e) => updateField("applicationId", e.target.value.trim())}
-                  style={{ width: "100%", marginTop: 4 }}
-                />
-              </label>
-              <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-                <label style={{ fontSize: 13, fontWeight: 600 }}>
-                  Environment
-                  <select
-                    value={cfg.environment}
-                    onChange={(e) => updateField("environment", e.target.value as TellerEnv)}
-                    style={{ display: "block", marginTop: 4, width: 180 }}
-                  >
-                    <option value="sandbox">Sandbox (fake data, no cert)</option>
-                    <option value="development">Development (real data, free)</option>
-                    <option value="production">Production</option>
-                  </select>
-                </label>
-                <label style={{ fontSize: 13, fontWeight: 600, flex: 1, minWidth: 220 }}>
-                  Proxy URL
-                  <input
-                    type="text"
-                    value={cfg.proxyUrl}
-                    placeholder="http://localhost:5181"
-                    onChange={(e) => updateField("proxyUrl", e.target.value.trim())}
-                    style={{ width: "100%", marginTop: 4 }}
-                  />
-                </label>
-              </div>
-              <div className="help">
-                Get your Application ID from the Teller dashboard. Use{" "}
-                <strong>http://localhost:5181</strong> for the local sidecar (Option A), or your{" "}
-                <strong>Worker URL</strong> for the hosted proxy (Option B).
-                {certNeeded && " Real-data environments require the client certificate to be installed on the proxy — see SETUP-TELLER.md."}
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* Connected banks */}
         {cfg.enrollments.length > 0 && (
