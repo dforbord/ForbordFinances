@@ -12,3 +12,10 @@ vite.config.d.ts
 
 # Firebase deploy cache (regenerated on every deploy)
 .firebase/
+
+# Teller — NEVER commit bank certificates, keys, or worker build state
+.forbord/
+*.pem
+*.key
+worker/.wrangler/
+worker/node_modules/

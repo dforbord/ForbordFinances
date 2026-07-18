@@ -1,0 +1,17 @@
+name = "forbord-teller-proxy"
+main = "src/index.ts"
+compatibility_date = "2026-01-01"
+
+# ── mTLS client certificate ──────────────────────────────────────────────────
+# 1. Download certificate.pem + private_key.pem from the Teller dashboard.
+# 2. Upload them to Cloudflare:
+#      npx wrangler mtls-certificate upload \
+#        --cert certificate.pem --key private_key.pem --name teller-client
+# 3. Paste the returned certificate_id below, then `npx wrangler deploy`.
+mtls_certificates = [
+  { binding = "TELLER_CERT", certificate_id = "PASTE_CERTIFICATE_ID_HERE" },
+]
+
+[vars]
+# Origins allowed to call this Worker (your app). Comma-separated, no spaces.
+ALLOWED_ORIGINS = "https://forbord-financials.web.app,http://localhost:5180"

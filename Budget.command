@@ -18,9 +18,21 @@ fi
 URL="http://localhost:5180"
 echo "Starting Budget at $URL …"
 
+# Start the local Teller proxy (Option A) if present. It holds the mTLS client
+# certificate on this Mac so bank data never routes through the cloud. Harmless
+# if you don't use Teller — it just idles and reports the cert as not installed.
+PROXY_PID=""
+if [ -f server/teller-proxy.mjs ]; then
+  node server/teller-proxy.mjs &
+  PROXY_PID=$!
+fi
+
 # Start the dev server in the background, wait for it, then open the browser.
 npm run dev &
 DEV_PID=$!
+
+# Kill both background processes when this window closes.
+trap 'kill $DEV_PID $PROXY_PID 2>/dev/null' EXIT
 
 for _ in $(seq 1 50); do
   if curl -s -o /dev/null "$URL"; then break; fi
