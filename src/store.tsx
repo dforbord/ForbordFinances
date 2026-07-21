@@ -22,6 +22,7 @@ import {
   PlannedExpense,
   Txn,
   UploadRecord,
+  WalletAccount,
 } from "./types";
 
 export interface ImportItem {
@@ -79,6 +80,9 @@ type Action =
   | { type: "ADD_INVESTMENT"; investment: Investment }
   | { type: "UPDATE_INVESTMENT"; investment: Investment }
   | { type: "DELETE_INVESTMENT"; id: string }
+  | { type: "ADD_WALLET_ACCOUNT"; account: WalletAccount }
+  | { type: "UPDATE_WALLET_ACCOUNT"; account: WalletAccount }
+  | { type: "DELETE_WALLET_ACCOUNT"; id: string }
   | { type: "IMPORT_BATCH"; items: ImportItem[]; rules: CategoryRule[]; upload?: UploadRecord };
 
 function ensureMonth(state: AppState, month: string): AppState {
@@ -254,6 +258,21 @@ function baseReducer(state: AppState, action: Action): AppState {
     case "DELETE_INVESTMENT":
       return { ...state, investments: state.investments.filter((i) => i.id !== action.id) };
 
+    case "ADD_WALLET_ACCOUNT":
+      return { ...state, walletAccounts: [...state.walletAccounts, action.account] };
+    case "UPDATE_WALLET_ACCOUNT":
+      return {
+        ...state,
+        walletAccounts: state.walletAccounts.map((a) =>
+          a.id === action.account.id ? action.account : a,
+        ),
+      };
+    case "DELETE_WALLET_ACCOUNT":
+      return {
+        ...state,
+        walletAccounts: state.walletAccounts.filter((a) => a.id !== action.id),
+      };
+
     case "IMPORT_BATCH": {
       const months = { ...state.months };
       for (const it of action.items) {
@@ -298,6 +317,7 @@ function coerce(raw: AppState): AppState {
     plannedExpenses: Array.isArray(raw.plannedExpenses) ? raw.plannedExpenses : [],
     businessExpenses: Array.isArray(raw.businessExpenses) ? raw.businessExpenses : [],
     investments: Array.isArray(raw.investments) ? raw.investments : [],
+    walletAccounts: Array.isArray(raw.walletAccounts) ? raw.walletAccounts : [],
     uploads: Array.isArray(raw.uploads) ? raw.uploads : [],
     categoryRules: Array.isArray(raw.categoryRules) ? raw.categoryRules : [],
     lastModified: raw.lastModified ?? 0,

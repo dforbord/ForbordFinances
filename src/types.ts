@@ -126,6 +126,22 @@ export interface BusinessExpense {
   month: string;
 }
 
+/** Where a wallet balance lives. Checking/savings/taxes are assets; credit is a debt. */
+export type WalletAccountType = "checking" | "savings" | "taxes" | "credit";
+
+/** One account or card in the Wallet — a manually-entered current balance snapshot,
+ *  independent of the budget buckets. Credit balances are money owed (a liability). */
+export interface WalletAccount {
+  id: string;
+  name: string;
+  type: WalletAccountType;
+  /** Whose account it is — free text, e.g. "Dylan", "Wife", "Joint". */
+  owner: string;
+  /** Current balance. For credit cards this is the amount owed. */
+  balance: number;
+  note?: string;
+}
+
 export interface AppState {
   version: number;
   buckets: Bucket[];
@@ -137,6 +153,8 @@ export interface AppState {
   businessExpenses: BusinessExpense[];
   /** Stock-market investments, aggregated by ticker on the Portfolio tab. */
   investments: Investment[];
+  /** Current balances of every checking/savings/tax/credit account — the Wallet tab. */
+  walletAccounts: WalletAccount[];
   /** History of bank-statement uploads, newest last — powers coverage tracking. */
   uploads: UploadRecord[];
   /** Learned import categorizations (description → bucket). */
