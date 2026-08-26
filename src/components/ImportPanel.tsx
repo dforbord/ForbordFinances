@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from "react";
 import { useStore, uid, ImportItem } from "../store";
-import { fmt, parseDate, dateKey, todayKey, daysBetween } from "../format";
+import { fmt, parseDate, dateKey, todayKey, daysBetween, monthLabel } from "../format";
 import { BucketType, CategoryRule, UploadRecord } from "../types";
 import { deriveKeyword, fingerprint, parseStatement, suggestCategory, ParsedTxn } from "../import";
 
@@ -29,13 +29,28 @@ interface Row {
   choice: string; // bucketId | INCOME | IGNORE | ""
 }
 
-export function ImportPanel() {
+/** One calendar month found inside the uploaded statement, with its own tallies. */
+interface MonthGroup {
+  month: string; // YYYY-MM
+  rows: Row[];
+  dup: number;
+  needCat: number;
+  willImport: number;
+  moneyIn: number;
+  moneyOut: number;
+}
+
+export function ImportPanel({ setMonth }: { setMonth?: (m: string) => void }) {
   const { state, dispatch } = useStore();
   const fileRef = useRef<HTMLInputElement>(null);
   const [rows, setRows] = useState<Row[]>([]);
   const [fileName, setFileName] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
+  // Months the user has collapsed in the review table (YYYY-MM keys).
+  const [collapsed, setCollapsed] = useState<string[]>([]);
+  // What the last import filed where, so a multi-month statement shows its split.
+  const [result, setResult] = useState<{ months: { month: string; added: number }[] } | null>(null);
   // Required per upload: the statement period, confirmed on the calendar.
   const [coverFrom, setCoverFrom] = useState("");
   const [coverTo, setCoverTo] = useState("");
@@ -51,6 +66,8 @@ export function ImportPanel() {
 
   function ingest(name: string, text: string) {
     setMsg(null);
+    setResult(null);
+    setCollapsed([]);
     const parsed = parseStatement(name, text);
     if (parsed.length === 0) {
       setFileName(name);
@@ -87,6 +104,37 @@ export function ImportPanel() {
     setRows((rs) => rs.map((r) => (r.id === id ? { ...r, choice } : r)));
   }
 
+  // A statement can span any number of months. Split the review by the month each
+  // transaction's own date falls in — that's exactly how it gets filed on import.
+  const monthGroups: MonthGroup[] = useMemo(() => {
+    const byMonth = new Map<string, Row[]>();
+    for (const r of rows) {
+      const key = r.parsed.date.slice(0, 7);
+      const bucket = byMonth.get(key);
+      if (bucket) bucket.push(r);
+      else byMonth.set(key, [r]);
+    }
+    return [...byMonth.entries()]
+      .sort((a, b) => b[0].localeCompare(a[0]))
+      .map(([month, rs]) => {
+        const g: MonthGroup = { month, rows: rs, dup: 0, needCat: 0, willImport: 0, moneyIn: 0, moneyOut: 0 };
+        for (const r of rs) {
+          if (r.dup) g.dup++;
+          else if (r.choice === "") g.needCat++;
+          else if (r.choice !== IGNORE) {
+            g.willImport++;
+            if (r.parsed.amount > 0) g.moneyIn += r.parsed.amount;
+            else g.moneyOut += Math.abs(r.parsed.amount);
+          }
+        }
+        return g;
+      });
+  }, [rows]);
+
+  function toggleMonth(month: string) {
+    setCollapsed((c) => (c.includes(month) ? c.filter((m) => m !== month) : [...c, month]));
+  }
+
   // Coverage summary from the upload log: what the last file covered, and what
   // date range the next upload still needs so nothing slips through the cracks.
   const coverage = useMemo(() => {
@@ -112,6 +160,8 @@ export function ImportPanel() {
   function doImport() {
     const items: ImportItem[] = [];
     const rules: CategoryRule[] = [];
+    // month key -> how many entries landed in it, for the split summary below.
+    const perMonth = new Map<string, number>();
     for (const r of importable) {
       const p = r.parsed;
       const month = p.date.slice(0, 7);
@@ -127,7 +177,11 @@ export function ImportPanel() {
         const kw = deriveKeyword(p.description);
         if (kw) rules.push({ keyword: kw, bucketId: r.choice });
       }
+      perMonth.set(month, (perMonth.get(month) ?? 0) + 1);
     }
+    const months = [...perMonth.entries()]
+      .sort((a, b) => b[0].localeCompare(a[0]))
+      .map(([month, added]) => ({ month, added }));
     // Record the statement period the user confirmed on the calendar — this is
     // what the coverage tracker uses to know which dates are already accounted
     // for and where the next upload should pick up.
@@ -141,6 +195,7 @@ export function ImportPanel() {
       total: rows.length,
       coverageStart: start,
       coverageEnd: end,
+      months,
     };
 
     dispatch({ type: "IMPORT_BATCH", items, rules, upload });
@@ -148,7 +203,9 @@ export function ImportPanel() {
     setFileName(null);
     setCoverFrom("");
     setCoverTo("");
-    setMsg(`Imported ${items.length} ${items.length === 1 ? "transaction" : "transactions"} into your buckets.`);
+    setCollapsed([]);
+    setResult({ months });
+    setMsg(null);
   }
 
   return (
@@ -158,6 +215,7 @@ export function ImportPanel() {
         <p className="subtle" style={{ marginTop: -4 }}>
           Drop a <strong>.csv</strong>, <strong>.ofx</strong>, or <strong>.qfx</strong> export from
           Chase, Wells Fargo, or Schwab. Spending is sorted into buckets, deposits become income.
+          A statement covering several months is split into those months automatically.
         </p>
 
         {coverage && (
@@ -189,6 +247,17 @@ export function ImportPanel() {
               Covered {fmtDay(coverage.lastUpload.coverageStart)} → {fmtDay(coverage.lastUpload.coverageEnd)} ·{" "}
               {coverage.lastUpload.added} added
             </div>
+            {(coverage.lastUpload.months?.length ?? 0) > 1 && (
+              <div className="subtle" style={{ marginTop: 3 }}>
+                Filed into{" "}
+                {coverage.lastUpload.months!.map((m, i) => (
+                  <span key={m.month}>
+                    {i > 0 && " · "}
+                    {monthLabel(m.month)} ({m.added})
+                  </span>
+                ))}
+              </div>
+            )}
             <div
               style={{
                 marginTop: 9,
@@ -247,8 +316,49 @@ export function ImportPanel() {
 
         {msg && <div className="help">{msg}</div>}
 
+        {result && (
+          <div className="import-result">
+            <strong>
+              Imported {result.months.reduce((s, m) => s + m.added, 0)}{" "}
+              {result.months.reduce((s, m) => s + m.added, 0) === 1 ? "transaction" : "transactions"} into{" "}
+              {result.months.length} {result.months.length === 1 ? "month" : "months"}.
+            </strong>
+            <ul className="import-result-months">
+              {result.months.map((m) => (
+                <li key={m.month}>
+                  <span>
+                    {monthLabel(m.month)} — {m.added} {m.added === 1 ? "entry" : "entries"}
+                  </span>
+                  {setMonth && (
+                    <button className="ghost small" onClick={() => setMonth(m.month)}>
+                      View
+                    </button>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
         {rows.length > 0 && (
           <>
+            {monthGroups.length > 1 && (
+              <div className="import-span">
+                📆 This statement spans <strong>{monthGroups.length} months</strong> —{" "}
+                {monthGroups.map((g) => monthLabel(g.month)).join(", ")}. Each transaction is filed into
+                the month its own date falls in.
+                <button
+                  className="ghost small"
+                  style={{ marginLeft: "auto" }}
+                  onClick={() =>
+                    setCollapsed((c) => (c.length === monthGroups.length ? [] : monthGroups.map((g) => g.month)))
+                  }
+                >
+                  {collapsed.length === monthGroups.length ? "Expand all" : "Collapse all"}
+                </button>
+              </div>
+            )}
+
             <table className="table" style={{ marginTop: 14 }}>
               <thead>
                 <tr>
@@ -258,45 +368,68 @@ export function ImportPanel() {
                   <th style={{ width: 190 }}>Bucket</th>
                 </tr>
               </thead>
-              <tbody>
-                {rows.map((r) => {
-                  const inc = r.parsed.amount > 0;
-                  return (
-                    <tr key={r.id} style={r.dup ? { opacity: 0.5 } : undefined}>
-                      <td className="subtle">{r.parsed.date.slice(5)}</td>
-                      <td style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 0 }}>
-                        {r.parsed.description}
-                      </td>
-                      <td className="num" style={{ color: inc ? "var(--green)" : undefined }}>
-                        {inc ? "+" : "-"}{fmt(Math.abs(r.parsed.amount))}
-                      </td>
-                      <td>
-                        {r.dup ? (
-                          <span className="subtle">Already imported</span>
-                        ) : (
-                          <select value={r.choice} onChange={(e) => setChoice(r.id, e.target.value)}>
-                            <option value="">— choose —</option>
-                            <option value={INCOME}>Income</option>
-                            {BUCKET_GROUPS.map((g) => {
-                              const bs = state.buckets.filter((b) => b.type === g.type);
-                              return bs.length ? (
-                                <optgroup key={g.type} label={g.label}>
-                                  {bs.map((b) => (
-                                    <option key={b.id} value={b.id}>
-                                      {b.name}
-                                    </option>
-                                  ))}
-                                </optgroup>
-                              ) : null;
-                            })}
-                            <option value={IGNORE}>Ignore / transfer</option>
-                          </select>
-                        )}
+              {monthGroups.map((g) => {
+                const isCollapsed = collapsed.includes(g.month);
+                return (
+                  <tbody key={g.month}>
+                    <tr className="month-group">
+                      <td colSpan={4}>
+                        <button className="month-group-head" onClick={() => toggleMonth(g.month)}>
+                          <span className="month-group-caret">{isCollapsed ? "▸" : "▾"}</span>
+                          <strong>{monthLabel(g.month)}</strong>
+                          <span className="subtle">
+                            {g.rows.length} {g.rows.length === 1 ? "row" : "rows"} · {g.willImport} to import
+                            {g.needCat > 0 && ` · ${g.needCat} need a bucket`}
+                            {g.dup > 0 && ` · ${g.dup} duplicate${g.dup === 1 ? "" : "s"}`}
+                          </span>
+                          <span className="month-group-totals">
+                            {g.moneyIn > 0 && <span style={{ color: "var(--green)" }}>+{fmt(g.moneyIn)}</span>}
+                            {g.moneyOut > 0 && <span>−{fmt(g.moneyOut)}</span>}
+                          </span>
+                        </button>
                       </td>
                     </tr>
-                  );
-                })}
-              </tbody>
+                    {!isCollapsed &&
+                      g.rows.map((r) => {
+                        const inc = r.parsed.amount > 0;
+                        return (
+                          <tr key={r.id} style={r.dup ? { opacity: 0.5 } : undefined}>
+                            <td className="subtle">{r.parsed.date.slice(5)}</td>
+                            <td style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 0 }}>
+                              {r.parsed.description}
+                            </td>
+                            <td className="num" style={{ color: inc ? "var(--green)" : undefined }}>
+                              {inc ? "+" : "-"}{fmt(Math.abs(r.parsed.amount))}
+                            </td>
+                            <td>
+                              {r.dup ? (
+                                <span className="subtle">Already imported</span>
+                              ) : (
+                                <select value={r.choice} onChange={(e) => setChoice(r.id, e.target.value)}>
+                                  <option value="">— choose —</option>
+                                  <option value={INCOME}>Income</option>
+                                  {BUCKET_GROUPS.map((grp) => {
+                                    const bs = state.buckets.filter((b) => b.type === grp.type);
+                                    return bs.length ? (
+                                      <optgroup key={grp.type} label={grp.label}>
+                                        {bs.map((b) => (
+                                          <option key={b.id} value={b.id}>
+                                            {b.name}
+                                          </option>
+                                        ))}
+                                      </optgroup>
+                                    ) : null;
+                                  })}
+                                  <option value={IGNORE}>Ignore / transfer</option>
+                                </select>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                  </tbody>
+                );
+              })}
             </table>
 
             <div
@@ -342,6 +475,7 @@ export function ImportPanel() {
                 disabled={importable.length === 0 || !coverFrom || !coverTo}
               >
                 Import {importable.length} {importable.length === 1 ? "transaction" : "transactions"}
+                {monthGroups.length > 1 && ` into ${monthGroups.length} months`}
               </button>
               <span className="subtle" style={{ fontSize: 13 }}>
                 {(!coverFrom || !coverTo) && "set the dates covered · "}
