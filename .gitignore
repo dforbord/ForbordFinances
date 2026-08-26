@@ -19,3 +19,6 @@ vite.config.d.ts
 *.key
 worker/.wrangler/
 worker/node_modules/
+
+# Claude Code personal settings (permissions for this machine)
+.claude/settings.local.json

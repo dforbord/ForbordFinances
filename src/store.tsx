@@ -83,7 +83,26 @@ type Action =
   | { type: "ADD_WALLET_ACCOUNT"; account: WalletAccount }
   | { type: "UPDATE_WALLET_ACCOUNT"; account: WalletAccount }
   | { type: "DELETE_WALLET_ACCOUNT"; id: string }
-  | { type: "IMPORT_BATCH"; items: ImportItem[]; rules: CategoryRule[]; upload?: UploadRecord };
+  | { type: "IMPORT_BATCH"; items: ImportItem[]; rules: CategoryRule[]; upload?: UploadRecord }
+  | { type: "CLEAR_MONTHS"; months: string[] };
+
+/** Every YYYY-MM a statement's coverage range touches, inclusive. */
+function monthsInRange(start: string, end: string): string[] {
+  const out: string[] = [];
+  const endKey = end.slice(0, 7);
+  let [y, m] = start.slice(0, 7).split("-").map(Number);
+  // Bounded so a malformed record can never spin forever.
+  for (let i = 0; i < 240; i++) {
+    const key = `${y}-${String(m).padStart(2, "0")}`;
+    out.push(key);
+    if (key >= endKey) break;
+    if (++m > 12) {
+      m = 1;
+      y++;
+    }
+  }
+  return out;
+}
 
 function ensureMonth(state: AppState, month: string): AppState {
   if (state.months[month]) return state;
@@ -290,6 +309,27 @@ function baseReducer(state: AppState, action: Action): AppState {
         categoryRules: [...ruleMap.values()],
         uploads: action.upload ? [...state.uploads, action.upload] : state.uploads,
       };
+    }
+
+    case "CLEAR_MONTHS": {
+      const wiped = new Set(action.months);
+      const months: AppState["months"] = {};
+      for (const [k, m] of Object.entries(state.months)) {
+        if (!wiped.has(k)) months[k] = m;
+      }
+      // Drop the upload records left covering nothing, so the coverage tracker
+      // stops claiming those dates are accounted for and asks for them again.
+      // Judged against what SURVIVES rather than against what this call wiped —
+      // otherwise clearing a multi-month statement one month at a time would
+      // strand its record forever, still vouching for an empty ledger.
+      const stillHasData = (mk: string) => {
+        const m = months[mk];
+        return !!m && m.income.length + m.txns.length > 0;
+      };
+      const uploads = state.uploads.filter((u) =>
+        monthsInRange(u.coverageStart, u.coverageEnd).some(stillHasData),
+      );
+      return { ...state, months, uploads };
     }
 
     default:
