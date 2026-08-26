@@ -1,6 +1,7 @@
 import { MonthlyEntry } from "./MonthlyEntry";
 import { Buckets } from "./Buckets";
 import { ImportPanel } from "./ImportPanel";
+import { ClearMonths } from "./ClearMonths";
 import { TellerPanel } from "./TellerPanel";
 import { MonthSwitch } from "./MonthSwitch";
 
@@ -34,6 +35,8 @@ export function LogEntries({
         </div>
         <Buckets embedded />
       </div>
+
+      <ClearMonths month={month} setMonth={setMonth} />
     </>
   );
 }

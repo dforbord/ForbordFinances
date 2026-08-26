@@ -470,3 +470,16 @@ input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: -1
   padding: 4px 0;
 }
 .import-result-months li span { color: var(--muted); }
+
+/* Clear-a-month panel — destructive, so it reads apart from the rest. */
+.danger-card { border-color: color-mix(in srgb, var(--red) 35%, var(--border)); }
+.danger-card h2 { color: var(--red); }
+.clear-result {
+  margin-top: 12px;
+  padding: 11px 14px;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--green);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  font-size: 14px;
+}
