@@ -23,7 +23,7 @@ export function LogEntries({
 
       <TellerPanel />
 
-      <ImportPanel />
+      <ImportPanel setMonth={setMonth} />
 
       <MonthlyEntry month={month} setMonth={setMonth} embedded />
 

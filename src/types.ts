@@ -103,6 +103,9 @@ export interface UploadRecord {
   coverageStart: string;
   /** Latest transaction date in the file (YYYY-MM-DD). */
   coverageEnd: string;
+  /** How the file's transactions split across calendar months, newest first.
+   *  Absent on uploads recorded before multi-month splitting was shown. */
+  months?: { month: string; added: number }[];
 }
 
 /** A logged stock-market investment (buy). The pie chart aggregates these by ticker. */
