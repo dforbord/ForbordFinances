@@ -11,6 +11,8 @@ import { Business } from "./components/Business";
 import { Portfolio } from "./components/Portfolio";
 import { Backup } from "./components/Backup";
 import { SignIn } from "./components/SignIn";
+import { Onboarding } from "./components/Onboarding";
+import { Household } from "./components/Household";
 
 type Tab =
   | "home"
@@ -21,6 +23,7 @@ type Tab =
   | "portfolio"
   | "business"
   | "calendar"
+  | "household"
   | "backup";
 
 const NAV: { id: Tab; label: string; icon: string }[] = [
@@ -32,11 +35,12 @@ const NAV: { id: Tab; label: string; icon: string }[] = [
   { id: "portfolio", label: "Portfolio", icon: "📈" },
   { id: "business", label: "Business", icon: "💼" },
   { id: "calendar", label: "Expense Calendar", icon: "📅" },
+  { id: "household", label: "Household", icon: "🏠" },
   { id: "backup", label: "Backup", icon: "💾" },
 ];
 
 export function App() {
-  const { file, cloud } = useStore();
+  const { file, cloud, household } = useStore();
   const [tab, setTab] = useState<Tab>("home");
   const [month, setMonth] = useState<string>(monthKey(new Date()));
 
@@ -50,6 +54,27 @@ export function App() {
   }
   if (cloud.configured && !cloud.user) {
     return <SignIn />;
+  }
+  // Signed in, but we don't yet know which household they're in.
+  if (cloud.configured && !household.ready) {
+    return (
+      <div className="signin">
+        <div className="subtle">Loading…</div>
+      </div>
+    );
+  }
+  // Signed in with no household → invite-only onboarding.
+  if (cloud.configured && !household.current) {
+    return <Onboarding />;
+  }
+  // In a household, but its budget hasn't loaded yet. Rendering now would show
+  // whatever budget this browser last cached — possibly another household's.
+  if (cloud.configured && !household.budgetReady) {
+    return (
+      <div className="signin">
+        <div className="subtle">Loading your budget…</div>
+      </div>
+    );
   }
 
   // When cloud sync is on for a signed-in user, Firestore already persists every
@@ -69,7 +94,7 @@ export function App() {
             Forbord<span className="brand-accent"> Financials</span>
           </span>
         </div>
-        {NAV.map((n) => (
+        {NAV.filter((n) => n.id !== "household" || cloud.configured).map((n) => (
           <button
             key={n.id}
             className={`nav-item ${tab === n.id ? "active" : ""}`}
@@ -130,6 +155,7 @@ export function App() {
         {tab === "portfolio" && <Portfolio />}
         {tab === "business" && <Business />}
         {tab === "calendar" && <Calendar />}
+        {tab === "household" && <Household />}
         {tab === "backup" && <Backup />}
       </main>
     </div>
