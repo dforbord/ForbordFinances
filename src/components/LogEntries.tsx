@@ -3,6 +3,7 @@ import { Buckets } from "./Buckets";
 import { ImportPanel } from "./ImportPanel";
 import { ClearMonths } from "./ClearMonths";
 import { TellerPanel } from "./TellerPanel";
+import { SimplefinPanel } from "./SimplefinPanel";
 import { MonthSwitch } from "./MonthSwitch";
 
 export function LogEntries({
@@ -22,6 +23,7 @@ export function LogEntries({
         <MonthSwitch month={month} setMonth={setMonth} />
       </div>
 
+      <SimplefinPanel />
       <TellerPanel />
 
       <ImportPanel setMonth={setMonth} />
