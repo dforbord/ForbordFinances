@@ -483,3 +483,31 @@ input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: -1
   background: var(--surface-2);
   font-size: 14px;
 }
+
+/* Category cell doubles as the bucket picker — re-filing a transaction should
+   be one click on the category, not a trip through edit mode. Styled to read
+   as text until hovered so the table stays calm. */
+.bucket-inline {
+  appearance: none;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: inherit;
+  font: inherit;
+  padding: 2px 20px 2px 6px;
+  margin-left: -6px;
+  cursor: pointer;
+  max-width: 190px;
+  background-image: linear-gradient(45deg, transparent 50%, currentColor 50%),
+    linear-gradient(135deg, currentColor 50%, transparent 50%);
+  background-position: right 9px center, right 5px center;
+  background-size: 4px 4px, 4px 4px;
+  background-repeat: no-repeat;
+  opacity: 0.95;
+}
+.bucket-inline:hover,
+.bucket-inline:focus {
+  border-color: var(--border);
+  background-color: rgba(255, 255, 255, 0.06);
+  outline: none;
+}
