@@ -31,6 +31,10 @@ export interface CategorizableRule {
 export function normalizeDesc(s: string): string {
   return s
     .toLowerCase()
+    // Card networks prefix the real merchant with the processor that handled
+    // it ("TST* THE COFFEE HOUSE", "SQ *LOCAL BAKERY"). Drop it or every such
+    // charge looks like a different merchant.
+    .replace(/^(tst|sq|sp|py|pp|ch|in)\s*\*\s*/i, "")
     .replace(/[^a-z0-9 ]+/g, " ")
     .replace(/\s+/g, " ")
     .trim();
@@ -52,15 +56,22 @@ export function fingerprint(t: ParsedTxn): string {
   return `${t.date}|${t.amount.toFixed(2)}|${normalizeDesc(t.description).slice(0, 32)}`;
 }
 
+// Each hint may only resolve to a bucket that genuinely means that category.
+// Deliberately NOT cross-listed: if someone has no "Dining" bucket, a
+// restaurant charge must fall through to Uncategorized rather than being
+// dumped into Groceries. A wrong bucket silently corrupts the budget, while
+// Uncategorized is visible and one correction fixes it for good.
 const MERCHANT_HINTS: { match: string[]; bucket: string[] }[] = [
-  { match: ["trader joe", "safeway", "kroger", "costco", "whole foods", "aldi", "publix", "grocer", "walmart", "wal mart", "instacart"], bucket: ["food", "grocer"] },
-  { match: ["restaurant", "cafe", "coffee", "starbucks", "chipotle", "mcdonald", "doordash", "grubhub", "ubereats", "uber eats", "taco", "pizza"], bucket: ["dining", "food", "restaurant"] },
-  { match: ["shell", "chevron", "exxon", "arco", "conoco", "gas", "uber", "lyft", "parking", "dmv", "auto", "toll"], bucket: ["car", "transport", "gas", "auto"] },
-  { match: ["xcel", "comcast", "xfinity", "at t", "att", "verizon", "t mobile", "tmobile", "electric", "water", "utility", "internet", "sewer"], bucket: ["utilit"] },
+  { match: ["trader joe", "safeway", "kroger", "king soopers", "sprouts", "costco", "whole foods", "aldi", "publix", "grocer", "walmart", "wal mart", "instacart", "natural grocers"], bucket: ["grocer", "food"] },
+  { match: ["restaurant", "cafe", "coffee", "starbucks", "chipotle", "mcdonald", "doordash", "grubhub", "ubereats", "uber eats", "taco", "pizza", "bakery", "brewing", "grill", "kitchen", "sushi", "panera", "subway", "wendy", "chick fil"], bucket: ["dining", "restaurant", "eating"] },
+  // "gas" alone is too greedy — it matches "las vegas". Brands and "fuel" only.
+  { match: ["shell", "chevron", "exxon", "arco", "conoco", "sinclair", "fuel", "gas station", "uber", "lyft", "parking", "dmv", "toll", "jiffy lube", "les schwab", "discount tire"], bucket: ["car", "transport", "gas", "auto"] },
+  { match: ["xcel", "comcast", "xfinity", "century link", "centurylink", "verizon", "t mobile", "tmobile", "electric", "water", "utility", "internet", "sewer", "waste management"], bucket: ["utilit"] },
   { match: ["rent", "mortgage", "zillow", "apartment", "hoa", "property"], bucket: ["housing", "rent", "mortgage"] },
-  { match: ["netflix", "spotify", "hulu", "disney", "hbo", "apple com", "prime video"], bucket: ["subscription", "entertain", "misc"] },
-  { match: ["amazon", "amzn", "target", "ebay", "etsy", "best buy"], bucket: ["misc", "shopping"] },
-  { match: ["delta", "united", "american air", "airbnb", "hotel", "expedia", "marriott", "hilton", "airline"], bucket: ["travel"] },
+  { match: ["netflix", "spotify", "hulu", "disney", "hbo", "apple com", "prime video", "youtube", "patreon", "icloud", "audible"], bucket: ["subscription", "entertain", "streaming"] },
+  { match: ["amazon", "amzn", "target", "ebay", "etsy", "best buy", "home depot", "lowes", "ikea", "chewy", "rei"], bucket: ["shopping", "household", "misc"] },
+  { match: ["walgreens", "cvs", "pharmacy", "dentist", "medical", "clinic", "vision"], bucket: ["health", "medical", "pharmacy"] },
+  { match: ["delta", "united airlines", "american air", "southwest air", "frontier air", "airbnb", "hotel", "expedia", "marriott", "hilton", "airline", "vrbo"], bucket: ["travel", "vacation"] },
 ];
 
 export interface Suggestion {

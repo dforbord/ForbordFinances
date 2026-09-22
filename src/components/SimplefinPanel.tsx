@@ -174,11 +174,16 @@ export function SimplefinPanel() {
               <button onClick={sync} disabled={!!busy}>
                 {busy === "sync" ? "Syncing…" : "Sync now"}
               </button>
-              {needsAttention && (
-                <button className="primary" onClick={() => setShowConnect(true)}>
-                  Reconnect
-                </button>
-              )}
+              {/* Always reachable: replacing a working connection is a normal
+                  thing to do (demo → real bank, or switching banks), not only
+                  a recovery path for a broken one. */}
+              <button
+                className={needsAttention ? "primary" : "ghost"}
+                onClick={() => setShowConnect(true)}
+                disabled={!!busy}
+              >
+                {needsAttention ? "Reconnect" : "Connect a different bank"}
+              </button>
             </div>
           </>
         )}
