@@ -30,7 +30,7 @@ export interface ImportItem {
   income?: IncomeEntry;
   txn?: Txn;
 }
-import { loadState, saveState, uid } from "./storage";
+import { defaultState, loadState, saveState, uid } from "./storage";
 import {
   forgetHandle,
   getSavedHandle,
@@ -47,10 +47,16 @@ import {
   signIn as cloudSignIn,
   signOutUser,
   subscribeBudget,
+  subscribeMyHousehold,
   writeBudget,
+  createHousehold as cloudCreateHousehold,
+  addMember as cloudAddMember,
+  removeMember as cloudRemoveMember,
+  readLegacyBudget,
+  Household,
   User,
 } from "./cloudsync";
-import { ALLOWED_EMAILS } from "./firebase-config";
+import { isAppAdmin } from "./firebase-config";
 
 type Action =
   | { type: "REPLACE"; state: AppState }
@@ -395,11 +401,25 @@ interface FileSync {
   disconnect: () => Promise<void>;
 }
 
+interface HouseholdSync {
+  /** False until we know whether this user belongs to a household. */
+  ready: boolean;
+  /** False until THIS household's budget has loaded (don't render before it). */
+  budgetReady: boolean;
+  current: Household | null;
+  isAdmin: boolean;
+  error: string | null;
+  create: (name: string) => Promise<void>;
+  addMember: (email: string) => Promise<void>;
+  removeMember: (email: string) => Promise<void>;
+}
+
 interface StoreValue {
   state: AppState;
   dispatch: React.Dispatch<Action>;
   file: FileSync;
   cloud: CloudSync;
+  household: HouseholdSync;
 }
 
 const StoreContext = createContext<StoreValue | null>(null);
@@ -539,57 +559,141 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   // lastModified currently reflected from the cloud — avoids echoing it back.
   const cloudAppliedModified = useRef<number>(-1);
 
+  // Anyone may sign in; household membership (not an email list) decides what
+  // they can actually see — see firestore.rules.
   useEffect(() => {
     if (!cloudConfigured) return;
     return onAuth((u) => {
-      if (u && ALLOWED_EMAILS.length > 0 && (!u.email || !ALLOWED_EMAILS.includes(u.email))) {
-        setCloudError(`${u.email ?? "That account"} isn't on the allowed list.`);
-        signOutUser();
-        setUser(null);
-        setAuthReady(true);
-        return;
-      }
       setCloudError(null);
       setUser(u);
       setAuthReady(true);
     });
   }, []);
 
-  // Subscribe to the shared doc; apply remote changes that are newer than ours.
+  // ── Household ───────────────────────────────────────────────────────────
+  const [household, setHousehold] = useState<Household | null>(null);
+  const [householdReady, setHouseholdReady] = useState(false);
+  const [householdError, setHouseholdError] = useState<string | null>(null);
+  // Which household's remote budget this device has actually loaded. Until it
+  // matches, we must not push local edits up — see the adoption note below.
+  const adoptedHid = useRef<string | null>(null);
+  // Gates rendering: localStorage still holds whatever budget this browser last
+  // had open, which on a shared device may belong to a DIFFERENT household. We
+  // show nothing until this household's own budget has loaded.
+  const [budgetReady, setBudgetReady] = useState(false);
+
   useEffect(() => {
-    if (!cloudConfigured || !user) return;
+    if (!cloudConfigured || !user?.email) {
+      setHousehold(null);
+      setHouseholdReady(!cloudConfigured);
+      return;
+    }
+    setHouseholdReady(false);
+    return subscribeMyHousehold(
+      user.email,
+      (h) => {
+        setHousehold(h);
+        setHouseholdReady(true);
+        setHouseholdError(null);
+      },
+      (e) => {
+        setHousehold(null);
+        setHouseholdReady(true);
+        setHouseholdError(e.message);
+      },
+    );
+  }, [user?.email]);
+
+  // Subscribe to this household's budget; apply remote changes newer than ours.
+  useEffect(() => {
+    const hid = household?.id;
+    if (!cloudConfigured || !user || !hid) return;
     setCloudStatus("connecting");
+    if (adoptedHid.current !== hid) setBudgetReady(false);
     return subscribeBudget(
+      hid,
       (remote) => {
         if (remote == null) {
-          // No cloud copy yet → seed it from whatever this device has.
-          cloudAppliedModified.current = stateRef.current.lastModified;
-          writeBudget(stateRef.current).catch(() => {});
+          // Brand-new household with no budget yet → seed it from this device.
+          // Skipped if we're already seeding it (a just-created household).
+          if (adoptedHid.current !== hid) {
+            adoptedHid.current = hid;
+            cloudAppliedModified.current = stateRef.current.lastModified;
+            writeBudget(hid, stateRef.current).catch(() => {});
+          }
+          setBudgetReady(true);
           setCloudStatus("synced");
           return;
         }
         const incoming = coerce(remote);
-        if (incoming.lastModified > stateRef.current.lastModified) {
+        // On the FIRST snapshot for a household its stored copy is authoritative.
+        // Local state is only a cache of whatever budget this browser last had
+        // open, so plain last-write-wins would let a new member's stale-but-
+        // newer-stamped data overwrite the household's real ledger.
+        const firstForThisHousehold = adoptedHid.current !== hid;
+        if (firstForThisHousehold || incoming.lastModified > stateRef.current.lastModified) {
+          adoptedHid.current = hid;
           cloudAppliedModified.current = incoming.lastModified;
           dispatch({ type: "REPLACE", state: incoming });
         }
+        setBudgetReady(true);
         setCloudStatus("synced");
       },
       () => setCloudStatus("offline"),
     );
-  }, [user]);
+  }, [user, household?.id]);
 
   // Push local edits up (debounced), skipping anything that came from the cloud.
   useEffect(() => {
-    if (!cloudConfigured || !user) return;
+    const hid = household?.id;
+    if (!cloudConfigured || !user || !hid) return;
+    // Never push before this device has loaded that household's own budget.
+    if (adoptedHid.current !== hid) return;
     if (state.lastModified === cloudAppliedModified.current) return;
     const t = setTimeout(() => {
-      writeBudget(state)
+      writeBudget(hid, state)
         .then(() => setCloudStatus("synced"))
         .catch(() => setCloudStatus("offline"));
     }, 600);
     return () => clearTimeout(t);
-  }, [state, user]);
+  }, [state, user, household?.id]);
+
+  const doCreateHousehold = useCallback(
+    async (name: string) => {
+      const email = user?.email;
+      if (!email) return;
+      setHouseholdError(null);
+      // Carry the pre-multi-tenant budget across, if this account can still see
+      // it, so the first household starts with the real data instead of blank
+      // defaults. Adopt it BEFORE the budget subscription opens, otherwise the
+      // seed-from-local path would race it and win.
+      const legacy = await readLegacyBudget();
+      const seed = legacy ? coerce(legacy) : stateRef.current;
+      const hid = await cloudCreateHousehold(name, email);
+      adoptedHid.current = hid;
+      cloudAppliedModified.current = seed.lastModified;
+      if (legacy) dispatch({ type: "REPLACE", state: seed });
+      setBudgetReady(true);
+      await writeBudget(hid, seed);
+    },
+    [user?.email],
+  );
+
+  const doAddMember = useCallback(
+    async (email: string) => {
+      if (!household) return;
+      await cloudAddMember(household.id, email);
+    },
+    [household?.id],
+  );
+
+  const doRemoveMember = useCallback(
+    async (email: string) => {
+      if (!household) return;
+      await cloudRemoveMember(household.id, email);
+    },
+    [household?.id],
+  );
 
   const doSignIn = useCallback(async () => {
     try {
@@ -606,6 +710,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const doSignOut = useCallback(async () => {
     await signOutUser();
     setUser(null);
+    // Drop this household's data from memory and localStorage. Households can
+    // belong to different families, so the next person to sign in on this
+    // device must never see the last one's budget.
+    adoptedHid.current = null;
+    cloudAppliedModified.current = -1;
+    setBudgetReady(false);
+    setHousehold(null);
+    dispatch({ type: "REPLACE", state: defaultState() });
   }, []);
 
   const value = useMemo<StoreValue>(
@@ -632,10 +744,22 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         signIn: doSignIn,
         signOut: doSignOut,
       },
+      household: {
+        ready: householdReady,
+        budgetReady,
+        current: household,
+        isAdmin: isAppAdmin(user?.email),
+        error: householdError,
+        create: doCreateHousehold,
+        addMember: doAddMember,
+        removeMember: doRemoveMember,
+      },
     }),
     [
       state, supported, status, name, lastSavedAt, error, createFile, openFile, reconnect, disconnect,
       authReady, user, cloudStatus, cloudError, doSignIn, doSignOut,
+      householdReady, budgetReady, household, householdError,
+      doCreateHousehold, doAddMember, doRemoveMember,
     ],
   );
 
