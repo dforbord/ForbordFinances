@@ -1,6 +1,6 @@
 # 🏦 Bank auto-sync with Teller
 
-Pull transactions and balances straight from your bank into Forbord Financials,
+Pull transactions and balances straight from your bank into Lumen Financials,
 instead of downloading statement files. Teller's **Development** environment is
 free (real bank data, no bill, up to 100 connected banks).
 

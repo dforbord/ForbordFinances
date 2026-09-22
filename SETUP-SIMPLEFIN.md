@@ -46,7 +46,7 @@ rules. It is never returned to the browser and never logged.
    and connect their bank(s) — bank login and any 2FA happen on SimpleFIN's
    site, never here.
 3. In SimpleFIN: **My Account → Apps → New app connection**, name it
-   *Forbord Financials*, **Create Setup Token**.
+   *Lumen Financials*, **Create Setup Token**.
 4. Paste that token back into the app and press **Connect**. The first sync
    runs immediately; after that it's automatic.
 

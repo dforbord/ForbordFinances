@@ -1,7 +1,16 @@
-# 💰 Budget
+# Lumen Financials
 
-A fully local, single-user budgeting app. No accounts, no server, no monthly
-fee. Your data stays on this Mac.
+A household budgeting app. Track income, spending, goals and savings across a
+shared budget, with transactions pulled in automatically from your bank each
+morning.
+
+- **Households** — invite-only, one budget shared by its members, isolated from
+  every other household ([firestore.rules](firestore.rules)).
+- **Automatic bank sync** — connect once through SimpleFIN and transactions
+  arrive on their own, categorized by merchant category code
+  ([SETUP-SIMPLEFIN.md](SETUP-SIMPLEFIN.md)).
+- **Still works offline** — manual entry and CSV/OFX/QFX import need no bank
+  connection at all.
 
 ## Launch it (fast way)
 

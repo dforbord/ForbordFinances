@@ -13,6 +13,8 @@ import { Backup } from "./components/Backup";
 import { SignIn } from "./components/SignIn";
 import { Onboarding } from "./components/Onboarding";
 import { Household } from "./components/Household";
+import { Brand } from "./components/Brand";
+import { Icon, IconName } from "./components/Icon";
 
 type Tab =
   | "home"
@@ -26,17 +28,17 @@ type Tab =
   | "household"
   | "backup";
 
-const NAV: { id: Tab; label: string; icon: string }[] = [
-  { id: "home", label: "Home", icon: "🏠" },
-  { id: "log", label: "Log Entries", icon: "📝" },
-  { id: "goals", label: "Goals", icon: "🎯" },
-  { id: "savings", label: "Savings", icon: "🏦" },
-  { id: "wallet", label: "Wallet", icon: "👛" },
-  { id: "portfolio", label: "Portfolio", icon: "📈" },
-  { id: "business", label: "Business", icon: "💼" },
-  { id: "calendar", label: "Expense Calendar", icon: "📅" },
-  { id: "household", label: "Household", icon: "🏠" },
-  { id: "backup", label: "Backup", icon: "💾" },
+const NAV: { id: Tab; label: string; icon: IconName }[] = [
+  { id: "home", label: "Home", icon: "home" },
+  { id: "log", label: "Log Entries", icon: "log" },
+  { id: "goals", label: "Goals", icon: "goals" },
+  { id: "savings", label: "Savings", icon: "savings" },
+  { id: "wallet", label: "Wallet", icon: "wallet" },
+  { id: "portfolio", label: "Portfolio", icon: "portfolio" },
+  { id: "business", label: "Business", icon: "business" },
+  { id: "calendar", label: "Expense Calendar", icon: "calendar" },
+  { id: "household", label: "Household", icon: "household" },
+  { id: "backup", label: "Backup", icon: "backup" },
 ];
 
 export function App() {
@@ -89,10 +91,7 @@ export function App() {
     <div className="app">
       <nav className="sidebar">
         <div className="brand">
-          <span className="brand-mark">💰</span>
-          <span className="brand-name">
-            Forbord<span className="brand-accent"> Financials</span>
-          </span>
+          <Brand />
         </div>
         {NAV.filter((n) => n.id !== "household" || cloud.configured).map((n) => (
           <button
@@ -100,7 +99,7 @@ export function App() {
             className={`nav-item ${tab === n.id ? "active" : ""}`}
             onClick={() => setTab(n.id)}
           >
-            <span>{n.icon}</span>
+            <Icon name={n.icon} />
             {n.label}
           </button>
         ))}
@@ -132,14 +131,16 @@ export function App() {
           <div className="filebanner">
             {file.status === "needs-permission" ? (
               <>
-                🔌 Reconnect your data file to resume auto-saving.
+                <Icon name="alert" size={16} />
+                Reconnect your data file to resume auto-saving.
                 <button className="small" onClick={file.reconnect}>
                   Reconnect
                 </button>
               </>
             ) : (
               <>
-                💡 Auto-save to a file is off — your data is only in this browser.
+                <Icon name="alert" size={16} />
+                Auto-save to a file is off — your data is only in this browser.
                 <button className="small" onClick={() => setTab("backup")}>
                   Set up
                 </button>

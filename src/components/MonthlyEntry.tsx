@@ -315,6 +315,7 @@ export function MonthlyEntry({
                         <tr key={t.id}>
                           <td className="subtle" style={{ whiteSpace: "nowrap" }}>{fmtDay(t.date)}</td>
                           <td>
+                            <span className="bucket-cell">
                             <span
                               className="dot"
                               style={{ background: b?.color ?? "#888" }}
@@ -340,6 +341,7 @@ export function MonthlyEntry({
                                 );
                               })}
                             </select>
+                            </span>
                           </td>
                           <td>{t.label}</td>
                           <td className="num">{fmt(t.amount)}</td>

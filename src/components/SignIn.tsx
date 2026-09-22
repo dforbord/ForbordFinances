@@ -1,18 +1,14 @@
 import { useStore } from "../store";
+import { Brand } from "./Brand";
 
 export function SignIn() {
   const { cloud } = useStore();
   return (
     <div className="signin">
       <div className="card signin-card">
-        <div className="brand" style={{ justifyContent: "center", padding: 0 }}>
-          <span className="brand-mark">💰</span>
-          <span className="brand-name">
-            Forbord<span className="brand-accent"> Financials</span>
-          </span>
-        </div>
+        <Brand size="lg" />
         <p className="subtle" style={{ margin: 0 }}>
-          Sign in to open your shared household budget.
+          Your household's money, in one clear view.
         </p>
         <button className="primary" onClick={cloud.signIn}>
           Sign in with Google
@@ -22,7 +18,7 @@ export function SignIn() {
             {cloud.error}
           </div>
         )}
-        <div className="help">Access is limited to approved accounts.</div>
+        <div className="help">Access is by invitation.</div>
       </div>
     </div>
   );
