@@ -25,6 +25,7 @@ import {
   where,
   Firestore,
 } from "firebase/firestore";
+import { getFunctions, httpsCallable, Functions } from "firebase/functions";
 import { firebaseConfig } from "./firebase-config";
 import { AppState } from "./types";
 
@@ -34,6 +35,7 @@ export const cloudConfigured = Boolean(firebaseConfig.apiKey && firebaseConfig.p
 let app: FirebaseApp | null = null;
 let auth: Auth | null = null;
 let db: Firestore | null = null;
+let fns: Functions | null = null;
 
 if (cloudConfigured) {
   app = initializeApp(firebaseConfig);
@@ -41,6 +43,16 @@ if (cloudConfigured) {
   // ignoreUndefinedProperties so optional fields (accountId, endDate, …) don't
   // make setDoc throw.
   db = initializeFirestore(app, { ignoreUndefinedProperties: true });
+}
+
+/**
+ * Created on first use, never at module load: this is an optional feature, and
+ * initializing it eagerly meant one throw here blanked the entire app.
+ */
+function functionsClient(): Functions {
+  if (!app) throw new Error("Cloud sync is not configured.");
+  if (!fns) fns = getFunctions(app);
+  return fns;
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -219,6 +231,62 @@ export async function readLegacyBudget(): Promise<AppState | null> {
   } catch {
     return null;
   }
+}
+
+// ── Bank sync (SimpleFIN) ────────────────────────────────────────────────
+//
+// The browser never sees the SimpleFIN access URL. It hands the one-time setup
+// token to a Cloud Function, which claims it and keeps the resulting
+// credential server-side; all the UI ever reads back is this status document.
+
+export interface ConnectionStatus {
+  state: "ok" | "needs_reauth" | "error";
+  message?: string | null;
+  /** Human-readable account names found at connect time. */
+  accounts?: string[];
+  lastSyncAt?: number | null;
+  lastAdded?: number;
+}
+
+export function subscribeConnectionStatus(
+  uid: string,
+  onData: (status: ConnectionStatus | null) => void,
+): () => void {
+  if (!db) {
+    onData(null);
+    return () => {};
+  }
+  return onSnapshot(
+    doc(db, "connectionStatus", uid),
+    (snap) => onData(snap.exists() ? (snap.data() as ConnectionStatus) : null),
+    () => onData(null),
+  );
+}
+
+export interface ClaimedAccount {
+  name: string;
+  org: string;
+  balance: string;
+}
+
+/** Hand the one-time setup token to the server to be exchanged and stored. */
+export async function claimBankConnection(setupToken: string): Promise<ClaimedAccount[]> {
+  const call = httpsCallable<{ setupToken: string }, { accounts: ClaimedAccount[] }>(
+    functionsClient(),
+    "claimConnection",
+  );
+  const res = await call({ setupToken });
+  return res.data.accounts ?? [];
+}
+
+/** Pull now instead of waiting for the nightly run. */
+export async function syncBankNow(): Promise<number> {
+  const call = httpsCallable<Record<string, never>, { added: number }>(
+    functionsClient(),
+    "syncNow",
+  );
+  const res = await call({});
+  return res.data.added ?? 0;
 }
 
 export type { User };

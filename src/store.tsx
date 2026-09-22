@@ -382,7 +382,7 @@ export type CloudStatus = "connecting" | "synced" | "offline";
 interface CloudSync {
   configured: boolean;
   authReady: boolean;
-  user: { email: string | null; name: string | null } | null;
+  user: { uid: string; email: string | null; name: string | null } | null;
   status: CloudStatus;
   error: string | null;
   signIn: () => Promise<void>;
@@ -738,7 +738,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       cloud: {
         configured: cloudConfigured,
         authReady,
-        user: user ? { email: user.email, name: user.displayName } : null,
+        user: user ? { uid: user.uid, email: user.email, name: user.displayName } : null,
         status: cloudStatus,
         error: cloudError,
         signIn: doSignIn,

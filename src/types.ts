@@ -24,6 +24,9 @@ export interface IncomeEntry {
   date?: string;
   /** Fingerprint of an imported bank transaction, for de-duplication. */
   importKey?: string;
+  /** Stable id from an automatic source, e.g. "sfin:<id>". Survives a
+   *  description or amount change that would move the fingerprint. */
+  sourceId?: string;
 }
 
 export interface Txn {
@@ -37,6 +40,9 @@ export interface Txn {
   date?: string;
   /** Fingerprint of an imported bank transaction, for de-duplication. */
   importKey?: string;
+  /** Stable id from an automatic source, e.g. "sfin:<id>". Survives a
+   *  description or amount change that would move the fingerprint. */
+  sourceId?: string;
 }
 
 /** Learned rule: a normalized description substring → which bucket to file it in. */
