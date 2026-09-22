@@ -41,6 +41,7 @@ export interface SimplefinTxn {
   description?: string;
   payee?: string;
   memo?: string;
+  mcc?: string;
   pending?: boolean;
 }
 
@@ -159,6 +160,9 @@ export function toIncomingTxns(res: AccountsResponse): IncomingTxn[] {
         date: toDateString(t.posted),
         description: (t.payee || t.description || t.memo || "Transaction").trim(),
         amount,
+        // The card network's own classification — the strongest signal we get,
+        // and it works for merchants no name list would know.
+        mcc: t.mcc,
       });
     }
   }
