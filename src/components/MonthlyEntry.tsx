@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { deriveKeyword } from "../import";
 import { useStore, uid } from "../store";
 import { monthKey } from "../storage";
 import { fmt, parseDate, todayKey } from "../format";
@@ -433,6 +434,12 @@ function TxnEditRow({
         accountId: isSavings ? txn.accountId : undefined,
       },
     });
+    // Re-filing a transaction is the clearest signal of where this merchant
+    // belongs — remember it so the nightly sync stops parking it.
+    if (bucketId !== txn.bucketId) {
+      const keyword = deriveKeyword(label.trim() || txn.label);
+      if (keyword) dispatch({ type: "LEARN_CATEGORY", keyword, bucketId });
+    }
     onDone();
   }
 

@@ -57,6 +57,7 @@ import {
   User,
 } from "./cloudsync";
 import { isAppAdmin } from "./firebase-config";
+import { normalizeDesc } from "../shared/categorize";
 
 type Action =
   | { type: "REPLACE"; state: AppState }
@@ -90,6 +91,7 @@ type Action =
   | { type: "UPDATE_WALLET_ACCOUNT"; account: WalletAccount }
   | { type: "DELETE_WALLET_ACCOUNT"; id: string }
   | { type: "IMPORT_BATCH"; items: ImportItem[]; rules: CategoryRule[]; upload?: UploadRecord }
+  | { type: "LEARN_CATEGORY"; keyword: string; bucketId: string }
   | { type: "CLEAR_MONTHS"; months: string[] };
 
 /** Every YYYY-MM a statement's coverage range touches, inclusive. */
@@ -315,6 +317,34 @@ function baseReducer(state: AppState, action: Action): AppState {
         categoryRules: [...ruleMap.values()],
         uploads: action.upload ? [...state.uploads, action.upload] : state.uploads,
       };
+    }
+
+    case "LEARN_CATEGORY": {
+      // Teach the app from a correction: filing a transaction by hand creates
+      // the same kind of rule the file-import review table does, so the next
+      // sync files that merchant on its own.
+      if (!action.keyword) return state;
+      const ruleMap = new Map(state.categoryRules.map((r) => [r.keyword, r]));
+      ruleMap.set(action.keyword, { keyword: action.keyword, bucketId: action.bucketId });
+
+      // Re-file the siblings still sitting in Uncategorized — one correction
+      // should fix every other charge from the same merchant, not just the one
+      // that happened to be clicked.
+      const parked = new Set(
+        state.buckets.filter((b) => b.name === "Uncategorized").map((b) => b.id),
+      );
+      const months: AppState["months"] = {};
+      for (const [k, m] of Object.entries(state.months)) {
+        months[k] = {
+          income: m.income,
+          txns: m.txns.map((t) =>
+            parked.has(t.bucketId) && normalizeDesc(t.label).includes(action.keyword)
+              ? { ...t, bucketId: action.bucketId }
+              : t,
+          ),
+        };
+      }
+      return { ...state, categoryRules: [...ruleMap.values()], months };
     }
 
     case "CLEAR_MONTHS": {
