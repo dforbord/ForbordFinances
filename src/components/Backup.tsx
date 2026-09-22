@@ -55,14 +55,14 @@ function FileSyncPanel() {
           <div className="toolbar" style={{ marginTop: 12 }}>
             {file.status === "needs-permission" ? (
               <button className="primary" onClick={file.reconnect}>
-                🔌 Reconnect &amp; resume saving
+                Reconnect &amp; resume saving
               </button>
             ) : (
               <button className="primary" onClick={file.createFile}>
                 ＋ Create / choose data file
               </button>
             )}
-            <button onClick={file.openFile}>📂 Open existing budget.json</button>
+            <button onClick={file.openFile}>Open existing budget.json</button>
             {file.status === "connected" && (
               <button className="ghost" onClick={file.disconnect}>
                 Disconnect
@@ -98,10 +98,10 @@ export function Backup() {
           )
         ) {
           dispatch({ type: "REPLACE", state: { ...imported, lastModified: Date.now() } });
-          setMsg("✅ Backup imported successfully.");
+          setMsg("Backup imported successfully.");
         }
       } catch (e) {
-        setMsg(`❌ ${(e as Error).message}`);
+        setMsg(`${(e as Error).message}`);
       }
     };
     reader.readAsText(file);
@@ -143,7 +143,7 @@ export function Backup() {
           </p>
           <div className="toolbar">
             <button className="primary" onClick={() => exportState(state)}>
-              ⬇ Export backup file
+              Export backup file
             </button>
           </div>
         </div>
@@ -154,7 +154,7 @@ export function Backup() {
           <h2>Import</h2>
           <p className="subtle">Restore from a backup file. This replaces all current data.</p>
           <div className="toolbar">
-            <button onClick={() => fileRef.current?.click()}>⬆ Choose backup file…</button>
+            <button onClick={() => fileRef.current?.click()}>Choose backup file…</button>
             <input
               ref={fileRef}
               type="file"

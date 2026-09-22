@@ -96,7 +96,7 @@ export function SimplefinPanel() {
   return (
     <div className="section">
       <div className="card">
-        <h2 style={{ margin: "0 0 4px" }}>🏦 Auto-sync from your bank</h2>
+        <h2 style={{ margin: "0 0 4px" }}>Auto-sync from your bank</h2>
 
         {!connected && !showConnect && (
           <>
@@ -127,7 +127,7 @@ export function SimplefinPanel() {
               </li>
               <li>
                 There, go to <strong>My Account → Apps → New app connection</strong>,
-                name it <em>Forbord Financials</em>, and click{" "}
+                name it <em>Lumen Financials</em>, and click{" "}
                 <strong>Create Setup Token</strong>.
               </li>
               <li>Paste that token below.</li>

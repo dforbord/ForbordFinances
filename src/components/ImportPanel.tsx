@@ -300,7 +300,7 @@ export function ImportPanel({ setMonth }: { setMonth?: (m: string) => void }) {
             onFiles(e.dataTransfer.files);
           }}
         >
-          ⬆ Drop a file here, or click to choose
+          Drop a file here, or click to choose
           {fileName && <div className="subtle" style={{ marginTop: 6 }}>{fileName}</div>}
         </div>
         <input
@@ -344,7 +344,7 @@ export function ImportPanel({ setMonth }: { setMonth?: (m: string) => void }) {
           <>
             {monthGroups.length > 1 && (
               <div className="import-span">
-                📆 This statement spans <strong>{monthGroups.length} months</strong> —{" "}
+                This statement spans <strong>{monthGroups.length} months</strong> —{" "}
                 {monthGroups.map((g) => monthLabel(g.month)).join(", ")}. Each transaction is filed into
                 the month its own date falls in.
                 <button

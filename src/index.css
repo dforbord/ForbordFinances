@@ -1,17 +1,31 @@
 :root {
-  --bg: #0f1117;
-  --surface: #181b24;
-  --surface-2: #20242f;
-  --border: #2a2f3c;
-  --text: #e6e8ee;
-  --muted: #9aa1b1;
-  --accent: #6366f1;
-  --green: #10b981;
-  --red: #ef4444;
-  --amber: #f59e0b;
-  --blue: #3b82f6;
+  /* Near-black with a cool undertone, so the warm accent reads as light
+     against it — the idea the name is built on. */
+  --bg: #0a0c11;
+  --surface: #111419;
+  --surface-2: #181c24;
+  --surface-3: #1f242e;
+  --border: #232935;
+  --border-strong: #303747;
+  --text: #edeff3;
+  --muted: #8a92a3;
+  --faint: #626a7a;
+
+  /* One accent, used sparingly. */
+  --accent: #d9a94a;
+  --accent-hi: #f0c876;
+  --accent-ink: #0a0c11;
+  --accent-soft: rgba(217, 169, 74, 0.13);
+
+  --green: #34d399;
+  --red: #f87171;
+  --amber: #fbbf24;
+  --blue: #60a5fa;
+
   --radius: 12px;
-  --shadow: 0 4px 18px rgba(0, 0, 0, 0.28);
+  --radius-sm: 8px;
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px -8px rgba(0, 0, 0, 0.5);
+  --ring: 0 0 0 3px rgba(217, 169, 74, 0.25);
 }
 
 * { box-sizing: border-box; }
@@ -24,25 +38,42 @@ body {
   color: var(--text);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   font-size: 15px;
-  line-height: 1.45;
+  line-height: 1.5;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: "cv02", "cv03", "cv04";
 }
+
+/* Money should never jitter as digits change. */
+.num, .stat .value, .table td.num, .month-switch .label { font-variant-numeric: tabular-nums; }
+
+h1, h2, h3 { letter-spacing: -0.015em; }
 
 a { color: var(--accent); }
 
 button {
   font-family: inherit;
   font-size: 14px;
+  font-weight: 500;
   cursor: pointer;
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-strong);
   background: var(--surface-2);
   color: var(--text);
   padding: 8px 14px;
-  border-radius: 8px;
-  transition: filter 0.12s ease, background 0.12s ease;
+  border-radius: var(--radius-sm);
+  transition: background 0.14s ease, border-color 0.14s ease, color 0.14s ease;
 }
-button:hover { filter: brightness(1.15); }
-button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+button:hover { background: var(--surface-3); border-color: #3b4353; }
+button:focus-visible { outline: none; box-shadow: var(--ring); }
+button:disabled { opacity: 0.45; cursor: not-allowed; }
+button:disabled:hover { background: var(--surface-2); border-color: var(--border-strong); }
+button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+  font-weight: 600;
+}
+button.primary:hover { background: var(--accent-hi); border-color: var(--accent-hi); }
 button.ghost { background: transparent; }
 button.danger { background: transparent; border-color: var(--red); color: var(--red); }
 button.danger:hover { background: rgba(239, 68, 68, 0.12); }
@@ -59,16 +90,17 @@ input, select {
   border-radius: 8px;
   width: 100%;
 }
-input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+input::placeholder { color: var(--faint); }
+input:focus, select:focus { outline: none; border-color: var(--accent); box-shadow: var(--ring); }
 
 /* Layout */
 .app { display: flex; min-height: 100vh; }
 
 .sidebar {
-  width: 230px;
+  width: 244px;
   background: var(--surface);
   border-right: 1px solid var(--border);
-  padding: 22px 16px;
+  padding: 20px 12px;
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -76,22 +108,20 @@ input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: -1
   top: 0;
   height: 100vh;
 }
-.sidebar .brand {
-  padding: 2px 4px 20px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.brand-mark { font-size: 17px; line-height: 1; flex: none; }
+.sidebar .brand { padding: 6px 8px 22px; display: flex; align-items: center; }
+
+.brand-lockup { display: inline-flex; align-items: center; gap: 10px; }
+.brand-lockup.lg { gap: 12px; }
+.brand-mark { flex: none; border-radius: 9px; }
 .brand-name {
-  font-family: "Hoefler Text", "Iowan Old Style", Georgia, "Times New Roman", serif;
-  font-size: 18px;
-  font-weight: 700;
-  letter-spacing: 0.015em;
+  font-size: 16.5px;
+  font-weight: 650;
+  letter-spacing: -0.02em;
   white-space: nowrap;
   color: var(--text);
 }
-.brand-accent { font-weight: 600; color: #c9a44a; }
+.brand-lockup.lg .brand-name { font-size: 21px; }
+.brand-accent { font-weight: 450; color: var(--muted); }
 
 /* Sign-in screen */
 .signin { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
@@ -106,22 +136,36 @@ input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: -1
 .cloud-dot.offline { background: var(--red); }
 .cloud-email { font-size: 12px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .nav-item {
+  position: relative;
   text-align: left;
   background: transparent;
   border: none;
-  padding: 10px 12px;
-  border-radius: 8px;
+  padding: 9px 12px;
+  border-radius: var(--radius-sm);
   color: var(--muted);
-  font-size: 15px;
+  font-size: 14.5px;
+  font-weight: 500;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 11px;
 }
-.nav-item:hover { background: var(--surface-2); filter: none; }
+.nav-item svg { flex: none; opacity: 0.8; }
+.nav-item:hover { background: var(--surface-2); color: var(--text); border-color: transparent; }
 .nav-item.active { background: var(--surface-2); color: var(--text); font-weight: 600; }
+.nav-item.active svg { color: var(--accent); opacity: 1; }
+.nav-item.active::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 9px;
+  bottom: 9px;
+  width: 2.5px;
+  border-radius: 999px;
+  background: var(--accent);
+}
 .nav-spacer { flex: 1; }
 
-.main { flex: 1; min-width: 0; padding: 28px 36px; }
+.main { flex: 1; min-width: 0; padding: 32px 40px 56px; max-width: 1240px; }
 .page-head {
   display: flex;
   align-items: center;
@@ -130,7 +174,7 @@ input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: -1
   gap: 16px;
   flex-wrap: wrap;
 }
-.page-head h1 { margin: 0; font-size: 26px; }
+.page-head h1 { margin: 0; font-size: 25px; font-weight: 650; }
 .subtle { color: var(--muted); font-size: 14px; }
 
 /* Month switcher */
@@ -143,11 +187,13 @@ input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: -1
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 18px;
+  padding: 20px;
   box-shadow: var(--shadow);
 }
+.stat { transition: border-color 0.15s ease; }
+.stat:hover { border-color: var(--border-strong); }
 .stat .label { color: var(--muted); font-size: 13px; text-transform: uppercase; letter-spacing: 0.04em; }
-.stat .value { font-size: 28px; font-weight: 700; margin-top: 6px; }
+.stat .value { font-size: 27px; font-weight: 640; margin-top: 7px; letter-spacing: -0.02em; }
 .stat .value.green { color: var(--green); }
 .stat .value.red { color: var(--red); }
 .stat .value.amber { color: var(--amber); }
@@ -155,7 +201,7 @@ input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: -1
 .stat .value.orange { color: #f97316; }
 
 .section { margin-top: 28px; }
-.section h2 { font-size: 18px; margin: 0 0 14px; }
+.section h2 { font-size: 15px; font-weight: 600; margin: 0 0 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
 
 /* Table */
 .table { width: 100%; border-collapse: collapse; }
@@ -168,7 +214,10 @@ input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: -1
   padding: 8px 10px;
   border-bottom: 1px solid var(--border);
 }
-.table td { padding: 10px; border-bottom: 1px solid var(--border); }
+.table td { padding: 11px 10px; border-bottom: 1px solid var(--border); }
+.table tbody tr { transition: background 0.12s ease; }
+.table tbody tr:hover { background: rgba(255, 255, 255, 0.022); }
+.table tr.total-row td { font-weight: 600; color: var(--text); }
 .table tr:last-child td { border-bottom: none; }
 .table .num { text-align: right; font-variant-numeric: tabular-nums; }
 .table .actions { text-align: right; white-space: nowrap; }
@@ -487,8 +536,17 @@ input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: -1
 /* Category cell doubles as the bucket picker — re-filing a transaction should
    be one click on the category, not a trip through edit mode. Styled to read
    as text until hovered so the table stays calm. */
+/* Keeps the colour dot and the picker on one line. A bare select would size
+   itself to its WIDEST option ("Federal Income Tax") and wrap under the dot. */
+.bucket-cell { display: inline-flex; align-items: center; min-width: 0; max-width: 100%; }
+
 .bucket-inline {
   appearance: none;
+  width: auto;
+  min-width: 0;
+  flex: 0 1 auto;
+  text-overflow: ellipsis;
+  vertical-align: middle;
   background: transparent;
   border: 1px solid transparent;
   border-radius: 6px;
@@ -497,7 +555,7 @@ input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: -1
   padding: 2px 20px 2px 6px;
   margin-left: -6px;
   cursor: pointer;
-  max-width: 190px;
+  max-width: 148px;
   background-image: linear-gradient(45deg, transparent 50%, currentColor 50%),
     linear-gradient(135deg, currentColor 50%, transparent 50%);
   background-position: right 9px center, right 5px center;

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useStore } from "../store";
+import { Brand } from "./Brand";
 
 /**
  * Shown to a signed-in user who isn't in a household yet.
@@ -29,12 +30,7 @@ export function Onboarding() {
   return (
     <div className="signin">
       <div className="card signin-card">
-        <div className="brand" style={{ justifyContent: "center", padding: 0 }}>
-          <span className="brand-mark">💰</span>
-          <span className="brand-name">
-            Forbord<span className="brand-accent"> Financials</span>
-          </span>
-        </div>
+        <Brand size="lg" />
 
         {household.isAdmin ? (
           <>
@@ -44,7 +40,7 @@ export function Onboarding() {
             </p>
             <input
               value={name}
-              placeholder="Household name (e.g. Forbord)"
+              placeholder="Household name"
               onChange={(e) => setName(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && create()}
               style={{ width: "100%" }}

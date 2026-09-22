@@ -10,7 +10,7 @@ const COLORS = [
 ];
 
 const STATUS_META: Record<GoalStatus, { label: string; color: string }> = {
-  reached: { label: "🎉 Reached", color: "#10b981" },
+  reached: { label: "Reached", color: "#10b981" },
   ahead: { label: "Ahead of pace", color: "#10b981" },
   "on-track": { label: "On pace", color: "#3b82f6" },
   behind: { label: "Behind pace", color: "#ef4444" },
@@ -188,7 +188,7 @@ function GoalCard({
       ? { label: "Ahead by", value: fmt(stats.aheadAmount) }
       : stats.status === "behind" || stats.status === "overdue"
         ? { label: "Behind by", value: fmt(stats.behindAmount) }
-        : { label: "Status", value: stats.status === "reached" ? "Reached 🎉" : "On pace" };
+        : { label: "Status", value: stats.status === "reached" ? "Reached" : "On pace" };
 
   return (
     <div className="card goal-card" style={{ borderLeft: `4px solid ${goal.color}` }}>
