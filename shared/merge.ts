@@ -22,6 +22,8 @@ export interface IncomingTxn {
   description: string;
   /** Signed: negative = money out. */
   amount: number;
+  /** Merchant Category Code, when the source provides one. */
+  mcc?: string;
 }
 
 interface EntryLike {
@@ -59,6 +61,20 @@ export interface MergeResult {
 }
 
 const UNCATEGORIZED = "Uncategorized";
+
+/** Colors for buckets created automatically, so they don't all look alike. */
+const CATEGORY_COLORS: Record<string, string> = {
+  Groceries: "#10b981",
+  "Dining Out": "#f59e0b",
+  Transportation: "#3b82f6",
+  Utilities: "#8b5cf6",
+  Housing: "#6366f1",
+  Shopping: "#ec4899",
+  Subscriptions: "#14b8a6",
+  Travel: "#0ea5e9",
+  Health: "#ef4444",
+  Entertainment: "#a855f7",
+};
 
 /**
  * Add `incoming` to `state`, skipping anything already there.
@@ -148,14 +164,23 @@ export function mergeBankTxns(
     } else {
       let bucketId = suggestion.bucketId;
       if (!bucketId) {
-        // Never drop a transaction just because we couldn't classify it — park
-        // it somewhere visible so it can be re-filed by hand.
-        let fallback = buckets.find((b) => b.name === UNCATEGORIZED);
-        if (!fallback) {
-          fallback = { id: makeId(), name: UNCATEGORIZED, type: "expense", planned: 0, color: "#94a3b8" };
-          buckets = [...buckets, fallback];
+        // When we DO know the category but the household has no bucket for it
+        // yet, create that bucket rather than burying the charge in a junk
+        // drawer — "Dining Out" is useful, a pile of Uncategorized is not.
+        // Only genuinely unknown merchants land in Uncategorized.
+        const name = suggestion.category ?? UNCATEGORIZED;
+        let target = buckets.find((b) => b.name === name);
+        if (!target) {
+          target = {
+            id: makeId(),
+            name,
+            type: "expense",
+            planned: 0,
+            color: CATEGORY_COLORS[name] ?? "#94a3b8",
+          };
+          buckets = [...buckets, target];
         }
-        bucketId = fallback.id;
+        bucketId = target.id;
       }
       month.txns.push({ ...entry, bucketId });
     }
