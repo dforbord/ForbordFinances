@@ -60,6 +60,25 @@ export function MonthlyEntry({
   const [editIncomeId, setEditIncomeId] = useState<string | null>(null);
   const [editTxnId, setEditTxnId] = useState<string | null>(null);
 
+  /**
+   * Re-file a transaction straight from its category cell — no edit mode.
+   *
+   * Goes through the same LEARN_CATEGORY path as the edit row, so one pick
+   * also teaches the merchant AND re-files its siblings still sitting in
+   * Uncategorized.
+   */
+  function refile(t: Txn, bucketId: string) {
+    if (!bucketId || bucketId === t.bucketId) return;
+    const isSavings = state.buckets.find((b) => b.id === bucketId)?.type === "savings";
+    dispatch({
+      type: "UPDATE_TXN",
+      month,
+      txn: { ...t, bucketId, accountId: isSavings ? t.accountId : undefined },
+    });
+    const keyword = deriveKeyword(t.label);
+    if (keyword) dispatch({ type: "LEARN_CATEGORY", keyword, bucketId });
+  }
+
   const selectedBucket = state.buckets.find((b) => b.id === txnBucket);
   const isSavings = selectedBucket?.type === "savings";
 
@@ -300,7 +319,27 @@ export function MonthlyEntry({
                               className="dot"
                               style={{ background: b?.color ?? "#888" }}
                             />
-                            {b?.name ?? "Unknown"}
+                            <select
+                              className="bucket-inline"
+                              value={t.bucketId}
+                              title="Move to another bucket"
+                              onChange={(e) => refile(t, e.target.value)}
+                            >
+                              {!b && <option value={t.bucketId}>Unknown</option>}
+                              {BUCKET_GROUPS.map((g) => {
+                                const inGroup = state.buckets.filter((x) => x.type === g.type);
+                                if (inGroup.length === 0) return null;
+                                return (
+                                  <optgroup key={g.type} label={g.label}>
+                                    {inGroup.map((x) => (
+                                      <option key={x.id} value={x.id}>
+                                        {x.name}
+                                      </option>
+                                    ))}
+                                  </optgroup>
+                                );
+                              })}
+                            </select>
                           </td>
                           <td>{t.label}</td>
                           <td className="num">{fmt(t.amount)}</td>
