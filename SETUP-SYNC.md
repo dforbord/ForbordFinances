@@ -49,7 +49,7 @@ npx firebase-tools use --add       # pick the project you created
 npx firebase-tools deploy          # deploys the site + the Firestore rules
 ```
 
-It prints a **Hosting URL** like `https://forbord-financials.web.app`.
+It prints a **Hosting URL** like `https://lumen.web.app`.
 
 ## 6. Share it
 

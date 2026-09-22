@@ -14,4 +14,4 @@ mtls_certificates = [
 
 [vars]
 # Origins allowed to call this Worker (your app). Comma-separated, no spaces.
-ALLOWED_ORIGINS = "https://forbord-financials.web.app,http://localhost:5180"
+ALLOWED_ORIGINS = "https://lumen.web.app,http://localhost:5180"
