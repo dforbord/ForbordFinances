@@ -76,16 +76,22 @@ export function mergeBankTxns(
   makeId: () => string,
   now: number = Date.now(),
 ): MergeResult {
-  const seenKeys = new Set<string>();
   const seenSources = new Set<string>();
+  // Fingerprints of entries that arrived WITHOUT a source id — typed by hand or
+  // loaded from a CSV/OFX file. Only these may be matched by content, and each
+  // may absorb at most one incoming transaction (see the loop below).
+  const manualKeys = new Map<string, number>();
+  const noteManual = (e: { importKey?: string; sourceId?: string }) => {
+    if (e.importKey && !e.sourceId) manualKeys.set(e.importKey, (manualKeys.get(e.importKey) ?? 0) + 1);
+  };
   for (const m of Object.values(state.months)) {
     for (const t of m.txns) {
-      if (t.importKey) seenKeys.add(t.importKey);
       if (t.sourceId) seenSources.add(t.sourceId);
+      noteManual(t);
     }
     for (const i of m.income) {
-      if (i.importKey) seenKeys.add(i.importKey);
       if (i.sourceId) seenSources.add(i.sourceId);
+      noteManual(i);
     }
   }
 
@@ -102,12 +108,25 @@ export function mergeBankTxns(
 
   for (const t of sorted) {
     const key = fingerprint(t);
-    if (seenSources.has(t.sourceId) || seenKeys.has(key)) {
+
+    // A source id we've already stored is the same transaction, full stop.
+    if (seenSources.has(t.sourceId)) {
+      skipped++;
+      continue;
+    }
+    // Otherwise this is a transaction the bank considers distinct, so it may
+    // only be rejected for matching something entered by hand or from a file.
+    // Each such entry absorbs ONE incoming transaction and is then used up:
+    // three $50 DraftKings charges on the same day are three real charges, not
+    // one repeated three times, and collapsing them loses real spending.
+    const manual = manualKeys.get(key);
+    if (manual) {
+      if (manual === 1) manualKeys.delete(key);
+      else manualKeys.set(key, manual - 1);
       skipped++;
       continue;
     }
     seenSources.add(t.sourceId);
-    seenKeys.add(key);
 
     const monthKey = t.date.slice(0, 7);
     const month = (months[monthKey] ??= { income: [], txns: [] });

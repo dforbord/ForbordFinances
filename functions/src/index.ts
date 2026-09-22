@@ -113,11 +113,20 @@ async function writeStatus(
  * saves the whole AppState blob; without it a save landing mid-sync would
  * drop the transactions we just added.
  */
-async function syncConnection(connectionUid: string, conn: ConnectionDoc): Promise<number> {
+async function syncConnection(
+  connectionUid: string,
+  conn: ConnectionDoc,
+  opts: { full?: boolean } = {},
+): Promise<number> {
   const now = Date.now();
-  const since = conn.lastSyncAt
-    ? conn.lastSyncAt - OVERLAP_DAYS * DAY_MS
-    : now - MAX_RANGE_DAYS * DAY_MS;
+  // "Sync now" always re-reads the whole window. It is user-initiated and rare,
+  // it costs the same single request, and dedup makes re-reading free — so it
+  // doubles as the way to recover transactions an earlier bug dropped. The
+  // nightly run stays incremental.
+  const since =
+    opts.full || !conn.lastSyncAt
+      ? now - MAX_RANGE_DAYS * DAY_MS
+      : conn.lastSyncAt - OVERLAP_DAYS * DAY_MS;
   const start = Math.max(since, now - MAX_RANGE_DAYS * DAY_MS);
 
   const res = await fetchAccounts(conn.accessUrl, start, now);
@@ -156,7 +165,7 @@ export const syncNow = onCall(async (req) => {
     throw new HttpsError("permission-denied", "That connection isn't yours.");
   }
   try {
-    return { added: await syncConnection(req.auth!.uid, conn) };
+    return { added: await syncConnection(req.auth!.uid, conn, { full: true }) };
   } catch (e) {
     await writeStatus(req.auth!.uid, { state: "error", message: (e as Error).message });
     throw new HttpsError("unavailable", (e as Error).message);
