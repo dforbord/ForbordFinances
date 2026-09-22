@@ -1,0 +1,11 @@
+{
+  "name": "Lumen Financials",
+  "install": "bash .cursor/install.sh",
+  "ports": [5180],
+  "terminals": [
+    {
+      "name": "dev server",
+      "command": "export PATH=\"$HOME/.nvm/versions/node/v24.16.0/bin:$PATH\" && npm run dev"
+    }
+  ]
+}
