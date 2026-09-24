@@ -144,13 +144,53 @@ function toDateString(epochSeconds: number): string {
  * Pending transactions are skipped: their amount and description can still
  * change, and the posted version arrives with the same id anyway.
  */
-export function toIncomingTxns(res: AccountsResponse): IncomingTxn[] {
+export interface Extracted {
+  txns: IncomingTxn[];
+  /** Counts for logging — a bare "added 0" can't tell you WHY nothing landed. */
+  seen: number;
+  pendingSkipped: number;
+  zeroSkipped: number;
+  /** Newest transaction the bank has sent, epoch seconds (0 if none). */
+  newestPosted: number;
+  /** Oldest "as of" across accounts — how current the upstream data is. */
+  asOf: number;
+  /** "<org> <name>: <n> txns" per account, so a missing account is obvious. */
+  perAccount: string[];
+}
+
+export function toIncomingTxns(res: AccountsResponse): Extracted {
   const out: IncomingTxn[] = [];
+  let seen = 0;
+  let pendingSkipped = 0;
+  let zeroSkipped = 0;
+  let newestPosted = 0;
+  let asOf = 0;
+  const perAccount: string[] = [];
   for (const account of res.accounts) {
-    for (const t of account.transactions ?? []) {
-      if (t.pending) continue;
+    const list = account.transactions ?? [];
+    // How CURRENT is the upstream data? SimpleFIN refreshes ~daily and Chase
+    // can lag by days, so "newest transaction" and the balance timestamp are
+    // what distinguish "the bank hasn't sent it yet" from a bug in here.
+    const newest = list.reduce((m, t) => (t.posted > m ? t.posted : m), 0);
+    if (newest > newestPosted) newestPosted = newest;
+    const stamp = account["balance-date"] ?? 0;
+    // Oldest wins: the feed is only as current as its laggiest account.
+    if (stamp && (asOf === 0 || stamp < asOf)) asOf = stamp;
+    const iso = (e: number) => (e ? new Date(e * 1000).toISOString().slice(0, 10) : "none");
+    perAccount.push(
+      `${account.name}:${list.length} newest=${iso(newest)} asOf=${iso(account["balance-date"] ?? 0)}`,
+    );
+    for (const t of list) {
+      seen++;
+      if (t.pending) {
+        pendingSkipped++;
+        continue;
+      }
       const amount = parseFloat(t.amount);
-      if (!isFinite(amount) || amount === 0) continue;
+      if (!isFinite(amount) || amount === 0) {
+        zeroSkipped++;
+        continue;
+      }
       out.push({
         // Scoped to the account: SimpleFIN ids are unique only WITHIN an
         // account. Real data collides across them — the demo returns id
@@ -166,5 +206,5 @@ export function toIncomingTxns(res: AccountsResponse): IncomingTxn[] {
       });
     }
   }
-  return out;
+  return { txns: out, seen, pendingSkipped, zeroSkipped, newestPosted, asOf, perAccount };
 }

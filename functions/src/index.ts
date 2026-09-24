@@ -59,7 +59,7 @@ function requireEmail(req: CallableRequest): string {
 
 // ── Claim ────────────────────────────────────────────────────────────────
 
-export const claimConnection = onCall(async (req) => {
+export const claimConnection = onCall({ timeoutSeconds: 300 }, async (req) => {
   const email = requireEmail(req);
   const setupToken = String((req.data as { setupToken?: string })?.setupToken ?? "");
 
@@ -130,7 +130,19 @@ async function syncConnection(
   const start = Math.max(since, now - MAX_RANGE_DAYS * DAY_MS);
 
   const res = await fetchAccounts(conn.accessUrl, start, now);
-  const incoming = toIncomingTxns(res);
+  const extracted = toIncomingTxns(res);
+  const incoming = extracted.txns;
+
+  // Enough detail to tell "the bank returned nothing" apart from "we filtered
+  // everything out" — a bare added-count cannot distinguish those, and that is
+  // exactly the question asked when an expected transaction is missing.
+  logger.info(
+    `fetch ${connectionUid}: window=${new Date(start).toISOString().slice(0, 10)}..${new Date(now)
+      .toISOString()
+      .slice(0, 10)} accounts=[${extracted.perAccount.join(", ")}] seen=${extracted.seen} ` +
+      `pending=${extracted.pendingSkipped} zero=${extracted.zeroSkipped} usable=${incoming.length}` +
+      (res.errors.length ? ` errors=${JSON.stringify(res.errors)}` : ""),
+  );
 
   let added = 0;
   const budgetRef = db.collection("budgets").doc(conn.householdId);
@@ -144,16 +156,26 @@ async function syncConnection(
   });
 
   await db.collection("connections").doc(connectionUid).update({ lastSyncAt: now });
+  logger.info(
+    `merge ${connectionUid}: added=${added} skippedAsDuplicate=${incoming.length - added}`,
+  );
+  const asDate = (epochSeconds: number) =>
+    epochSeconds ? new Date(epochSeconds * 1000).toISOString().slice(0, 10) : null;
   await writeStatus(connectionUid, {
     state: res.errors.length ? "needs_reauth" : "ok",
     message: res.errors[0] ?? null,
     lastSyncAt: now,
     lastAdded: added,
+    // When we last ASKED, versus how current the bank's answer was. Showing
+    // only the former made a successful sync look like everything was
+    // up to date while Chase's feed sat three days behind.
+    bankAsOf: asDate(extracted.asOf),
+    newestTxnDate: asDate(extracted.newestPosted),
   });
   return added;
 }
 
-export const syncNow = onCall(async (req) => {
+export const syncNow = onCall({ timeoutSeconds: 300 }, async (req) => {
   const email = requireEmail(req);
   const ref = db.collection("connections").doc(req.auth!.uid);
   const snap = await ref.get();
@@ -180,7 +202,7 @@ export const syncNow = onCall(async (req) => {
  * are recorded per connection and never abort the rest of the run.
  */
 export const dailyRefresh = onSchedule(
-  { schedule: "0 5 * * *", timeZone: "America/Denver", retryCount: 0 },
+  { schedule: "0 5 * * *", timeZone: "America/Denver", retryCount: 0, timeoutSeconds: 540 },
   async () => {
     const connections = await db.collection("connections").get();
     let ok = 0;

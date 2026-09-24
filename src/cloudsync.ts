@@ -246,6 +246,10 @@ export interface ConnectionStatus {
   accounts?: string[];
   lastSyncAt?: number | null;
   lastAdded?: number;
+  /** How current the BANK's data was, not when we last asked. YYYY-MM-DD. */
+  bankAsOf?: string | null;
+  /** Date of the newest transaction the bank has sent. YYYY-MM-DD. */
+  newestTxnDate?: string | null;
 }
 
 export function subscribeConnectionStatus(
