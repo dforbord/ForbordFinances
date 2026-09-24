@@ -9,6 +9,7 @@ import {
 } from "../cloudsync";
 
 const BRIDGE_URL = "https://beta-bridge.simplefin.org/";
+const BRIDGE_ACCOUNT_URL = "https://beta-bridge.simplefin.org/my-account";
 
 function whenLabel(ms?: number | null): string {
   if (!ms) return "not yet";
@@ -92,6 +93,7 @@ export function SimplefinPanel() {
 
   const connected = loaded && !!status;
   const needsAttention = status?.state === "needs_reauth" || status?.state === "error";
+  const isStale = status?.state === "stale";
 
   return (
     <div className="section">
@@ -170,7 +172,7 @@ export function SimplefinPanel() {
                     <span className="subtle"> · refreshes automatically each morning</span>
                   )}
                 </div>
-                {status?.newestTxnDate && (
+                {status?.newestTxnDate && !isStale && (
                   <div className="help" style={{ marginTop: 6 }}>
                     Your bank has sent transactions through{" "}
                     <strong>{status.newestTxnDate}</strong>
@@ -195,6 +197,27 @@ export function SimplefinPanel() {
               </button>
             </div>
           </>
+        )}
+
+        {isStale && (
+          <div className="filebanner" style={{ marginTop: 14, marginBottom: 0 }}>
+            <div>
+              <strong>Your bank has stopped sending new data.</strong> Chase last
+              updated {status?.bankAsOf ?? "a while ago"}
+              {typeof status?.staleDays === "number" && ` — ${status.staleDays} days ago`}
+              , so anything since then is missing. SimpleFIN has no way for this app
+              to force a refresh; open it and press <strong>Adjust</strong> next to
+              the bank to make it re-pull.
+            </div>
+            <a
+              className="button-link"
+              href={BRIDGE_ACCOUNT_URL}
+              target="_blank"
+              rel="noreferrer"
+            >
+              Open SimpleFIN
+            </a>
+          </div>
         )}
 
         {needsAttention && (
