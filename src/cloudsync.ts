@@ -240,7 +240,7 @@ export async function readLegacyBudget(): Promise<AppState | null> {
 // credential server-side; all the UI ever reads back is this status document.
 
 export interface ConnectionStatus {
-  state: "ok" | "needs_reauth" | "error";
+  state: "ok" | "stale" | "needs_reauth" | "error";
   message?: string | null;
   /** Human-readable account names found at connect time. */
   accounts?: string[];
@@ -250,6 +250,8 @@ export interface ConnectionStatus {
   bankAsOf?: string | null;
   /** Date of the newest transaction the bank has sent. YYYY-MM-DD. */
   newestTxnDate?: string | null;
+  /** How many days behind the bank's own data is. */
+  staleDays?: number | null;
 }
 
 export function subscribeConnectionStatus(

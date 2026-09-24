@@ -28,6 +28,17 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 /** Re-request a few days we've already seen; banks post late and dedup is safe. */
 const OVERLAP_DAYS = 3;
 
+/**
+ * How far behind the bank's own data may fall before we call it stale.
+ *
+ * SimpleFIN has NO on-demand refresh — it pulls from the bank on its own
+ * schedule, and a Chase feed can quietly stop updating while still reporting
+ * "OK". The only remedy is a human pressing Adjust on the SimpleFIN
+ * dashboard, so the one thing this app can usefully do is notice and say so.
+ * Two days allows for a normal weekend-ish lag without crying wolf.
+ */
+const STALE_AFTER_DAYS = 2;
+
 interface ConnectionDoc {
   accessUrl: string;
   householdId: string;
@@ -161,8 +172,18 @@ async function syncConnection(
   );
   const asDate = (epochSeconds: number) =>
     epochSeconds ? new Date(epochSeconds * 1000).toISOString().slice(0, 10) : null;
+
+  const staleDays = extracted.asOf
+    ? Math.floor((now - extracted.asOf * 1000) / DAY_MS)
+    : null;
+  const isStale = staleDays !== null && staleDays >= STALE_AFTER_DAYS;
+  if (isStale) {
+    logger.warn(`stale ${connectionUid}: bank data is ${staleDays} days old`);
+  }
+
   await writeStatus(connectionUid, {
-    state: res.errors.length ? "needs_reauth" : "ok",
+    state: res.errors.length ? "needs_reauth" : isStale ? "stale" : "ok",
+    staleDays,
     message: res.errors[0] ?? null,
     lastSyncAt: now,
     lastAdded: added,
