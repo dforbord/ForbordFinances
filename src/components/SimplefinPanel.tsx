@@ -170,6 +170,15 @@ export function SimplefinPanel() {
                     <span className="subtle"> · refreshes automatically each morning</span>
                   )}
                 </div>
+                {status?.newestTxnDate && (
+                  <div className="help" style={{ marginTop: 6 }}>
+                    Your bank has sent transactions through{" "}
+                    <strong>{status.newestTxnDate}</strong>
+                    {status.bankAsOf && ` (data as of ${status.bankAsOf})`}. Anything
+                    more recent hasn't reached SimpleFIN yet — banks often lag a few
+                    days.
+                  </div>
+                )}
               </div>
               <button onClick={sync} disabled={!!busy}>
                 {busy === "sync" ? "Syncing…" : "Sync now"}
